@@ -1,0 +1,111 @@
+erDiagram
+    %% =========================
+    %% Entities
+    %% =========================
+
+    USER {
+        int user_id PK
+        varchar username "UNIQUE"
+        varchar nickname
+        varchar email "UNIQUE"
+        varchar password_hash
+        timestamp created_at
+    }
+
+    WORKSPACE {
+        int workspace_id PK
+        varchar name
+        varchar description
+        int creator_user_id FK
+        timestamp created_at
+    }
+
+    WORKSPACE_ADMIN {
+        int workspace_id PK, FK
+        int user_id PK, FK
+        timestamp assigned_at
+    }
+
+    WORKSPACE_MEMBERSHIP {
+        int workspace_id PK, FK
+        int user_id PK, FK
+        timestamp joined_at
+    }
+
+    WORKSPACE_INVITATION {
+        int invitation_id PK
+        int workspace_id FK
+        int invited_user_id FK
+        int invited_by_user_id FK
+        timestamp invited_at
+        varchar status "pending | accepted | declined"
+    }
+
+    CHANNEL {
+        int channel_id PK
+        int workspace_id FK
+        varchar name
+        varchar channel_type "public | private | direct"
+        int creator_user_id FK
+        timestamp created_at
+    }
+
+    CHANNEL_MEMBERSHIP {
+        int channel_id PK, FK
+        int user_id PK, FK
+        timestamp joined_at
+    }
+
+    CHANNEL_INVITATION {
+        int invitation_id PK
+        int channel_id FK
+        int invited_user_id FK
+        int invited_by_user_id FK
+        timestamp invited_at
+        varchar status "pending | accepted | declined"
+    }
+
+    DIRECT_CHANNEL_PARTICIPANT {
+        int channel_id PK, FK
+        int user_id PK, FK
+    }
+
+    MESSAGE {
+        int message_id PK
+        int channel_id FK
+        int sender_user_id FK
+        text body
+        timestamp created_at
+    }
+
+    %% =========================
+    %% Relationships
+    %% =========================
+
+    USER ||--o{ WORKSPACE : creates
+
+    USER ||--o{ WORKSPACE_ADMIN : assigned_as
+    WORKSPACE ||--o{ WORKSPACE_ADMIN : has
+
+    USER ||--o{ WORKSPACE_MEMBERSHIP : joins
+    WORKSPACE ||--o{ WORKSPACE_MEMBERSHIP : has
+
+    USER ||--o{ WORKSPACE_INVITATION : receives
+    WORKSPACE ||--o{ WORKSPACE_INVITATION : has
+    USER ||--o{ WORKSPACE_INVITATION : sends
+
+    WORKSPACE ||--o{ CHANNEL : contains
+    USER ||--o{ CHANNEL : creates
+
+    USER ||--o{ CHANNEL_MEMBERSHIP : joins
+    CHANNEL ||--o{ CHANNEL_MEMBERSHIP : has
+
+    USER ||--o{ CHANNEL_INVITATION : receives
+    CHANNEL ||--o{ CHANNEL_INVITATION : has
+    USER ||--o{ CHANNEL_INVITATION : sends
+
+    CHANNEL ||--o{ DIRECT_CHANNEL_PARTICIPANT : has
+    USER ||--o{ DIRECT_CHANNEL_PARTICIPANT : participates_in
+
+    CHANNEL ||--o{ MESSAGE : contains
+    USER ||--o{ MESSAGE : sends
