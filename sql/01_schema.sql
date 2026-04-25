@@ -1,5 +1,5 @@
--- 1. User
-CREATE TABLE User
+-- 1. AppUser
+CREATE TABLE AppUser
 (
     user_id INT PRIMARY KEY,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE Workspace
     description TEXT,
     creator_user_id INT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (creator_user_id) REFERENCES "User"(user_id)
+    FOREIGN KEY (creator_user_id) REFERENCES AppUser(user_id)
 );
 
 -- 3. Workspace Admin
@@ -28,7 +28,7 @@ CREATE TABLE WorkspaceAdmin
     assigned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (workspace_id, user_id),
     FOREIGN KEY (workspace_id) REFERENCES Workspace(workspace_id),
-    FOREIGN KEY (user_id) REFERENCES "User"(user_id)
+    FOREIGN KEY (user_id) REFERENCES AppUser(user_id)
 );
 
 -- 4. Workspace Membership
@@ -39,7 +39,7 @@ CREATE TABLE WorkspaceMembership
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (workspace_id, user_id),
     FOREIGN KEY (workspace_id) REFERENCES Workspace(workspace_id),
-    FOREIGN KEY (user_id) REFERENCES "User"(user_id)
+    FOREIGN KEY (user_id) REFERENCES AppUser(user_id)
 );
 
 -- 5. Workspace Invitation
@@ -52,8 +52,8 @@ CREATE TABLE WorkspaceInvitation
     invited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'accepted', 'declined')),
     FOREIGN KEY (workspace_id) REFERENCES Workspace(workspace_id),
-    FOREIGN KEY (invited_user_id) REFERENCES "User"(user_id),
-    FOREIGN KEY (invited_by_user_id) REFERENCES "User"(user_id)
+    FOREIGN KEY (invited_user_id) REFERENCES AppUser(user_id),
+    FOREIGN KEY (invited_by_user_id) REFERENCES AppUser(user_id)
 );
 
 -- 6. Channel
@@ -67,7 +67,7 @@ CREATE TABLE Channel
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (workspace_id, name),
     FOREIGN KEY (workspace_id) REFERENCES Workspace(workspace_id),
-    FOREIGN KEY (creator_user_id) REFERENCES "User"(user_id)
+    FOREIGN KEY (creator_user_id) REFERENCES AppUser(user_id)
 );
 
 -- 7. Channel Membership
@@ -78,7 +78,7 @@ CREATE TABLE ChannelMembership
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (channel_id, user_id),
     FOREIGN KEY (channel_id) REFERENCES Channel(channel_id),
-    FOREIGN KEY (user_id) REFERENCES "User"(user_id)
+    FOREIGN KEY (user_id) REFERENCES AppUser(user_id)
 );
 
 -- 8. Channel Invitation
@@ -91,8 +91,8 @@ CREATE TABLE ChannelInvitation
     invited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'accepted', 'declined')),
     FOREIGN KEY (channel_id) REFERENCES Channel(channel_id),
-    FOREIGN KEY (invited_user_id) REFERENCES "User"(user_id),
-    FOREIGN KEY (invited_by_user_id) REFERENCES "User"(user_id)
+    FOREIGN KEY (invited_user_id) REFERENCES AppUser(user_id),
+    FOREIGN KEY (invited_by_user_id) REFERENCES AppUser(user_id)
 );
 
 -- 9. Message
@@ -104,5 +104,5 @@ CREATE TABLE Message
     body TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (channel_id) REFERENCES Channel(channel_id),
-    FOREIGN KEY (sender_user_id) REFERENCES "User"(user_id)
+    FOREIGN KEY (sender_user_id) REFERENCES AppUser(user_id)
 );
