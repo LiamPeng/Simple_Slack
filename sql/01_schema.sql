@@ -95,17 +95,7 @@ CREATE TABLE ChannelInvitation
     FOREIGN KEY (invited_by_user_id) REFERENCES "User"(user_id)
 );
 
--- 9. Direct Channel Participant
-CREATE TABLE DirectChannelParticipant
-(
-    channel_id INT NOT NULL,
-    user_id INT NOT NULL,
-    PRIMARY KEY (channel_id, user_id),
-    FOREIGN KEY (channel_id) REFERENCES Channel(channel_id),
-    FOREIGN KEY (user_id) REFERENCES "User"(user_id)
-);
-
--- 10. Message
+-- 9. Message
 CREATE TABLE Message
 (
     message_id INT PRIMARY KEY,
