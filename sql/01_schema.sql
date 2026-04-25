@@ -62,7 +62,7 @@ CREATE TABLE Channel
     channel_id INT PRIMARY KEY,
     workspace_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
-    channel_type VARCHAR(20) NOT NULL CHECK (channel_type IN ('public', 'private','direct')),
+    channel_type VARCHAR(20) NOT NULL CHECK (channel_type IN ('public', 'private', 'direct')),
     creator_user_id INT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (workspace_id, name),
