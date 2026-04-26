@@ -3,7 +3,7 @@ erDiagram
     %% Entities
     %% =========================
 
-    USER {
+    APP_USER {
         int user_id PK
         varchar username "UNIQUE"
         varchar nickname
@@ -65,11 +65,6 @@ erDiagram
         varchar status "pending | accepted | declined"
     }
 
-    DIRECT_CHANNEL_PARTICIPANT {
-        int channel_id PK, FK
-        int user_id PK, FK
-    }
-
     MESSAGE {
         int message_id PK
         int channel_id FK
@@ -82,30 +77,27 @@ erDiagram
     %% Relationships
     %% =========================
 
-    USER ||--o{ WORKSPACE : creates
+    APP_USER ||--o{ WORKSPACE : creates
 
-    USER ||--o{ WORKSPACE_ADMIN : assigned_as
+    APP_USER ||--o{ WORKSPACE_ADMIN : assigned_as
     WORKSPACE ||--o{ WORKSPACE_ADMIN : has
 
-    USER ||--o{ WORKSPACE_MEMBERSHIP : joins
+    APP_USER ||--o{ WORKSPACE_MEMBERSHIP : joins
     WORKSPACE ||--o{ WORKSPACE_MEMBERSHIP : has
 
-    USER ||--o{ WORKSPACE_INVITATION : receives
+    APP_USER ||--o{ WORKSPACE_INVITATION : receives
     WORKSPACE ||--o{ WORKSPACE_INVITATION : has
-    USER ||--o{ WORKSPACE_INVITATION : sends
+    APP_USER ||--o{ WORKSPACE_INVITATION : sends
 
     WORKSPACE ||--o{ CHANNEL : contains
-    USER ||--o{ CHANNEL : creates
+    APP_USER ||--o{ CHANNEL : creates
 
-    USER ||--o{ CHANNEL_MEMBERSHIP : joins
+    APP_USER ||--o{ CHANNEL_MEMBERSHIP : joins
     CHANNEL ||--o{ CHANNEL_MEMBERSHIP : has
 
-    USER ||--o{ CHANNEL_INVITATION : receives
+    APP_USER ||--o{ CHANNEL_INVITATION : receives
     CHANNEL ||--o{ CHANNEL_INVITATION : has
-    USER ||--o{ CHANNEL_INVITATION : sends
-
-    CHANNEL ||--o{ DIRECT_CHANNEL_PARTICIPANT : has
-    USER ||--o{ DIRECT_CHANNEL_PARTICIPANT : participates_in
+    APP_USER ||--o{ CHANNEL_INVITATION : sends
 
     CHANNEL ||--o{ MESSAGE : contains
-    USER ||--o{ MESSAGE : sends
+    APP_USER ||--o{ MESSAGE : sends

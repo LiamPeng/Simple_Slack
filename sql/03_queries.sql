@@ -1,17 +1,17 @@
 -- create a new user account
-INSERT INTO "User"
+INSERT INTO AppUser
 VALUES
     (6, 'ben@example.com', 'ben', 'benny', 'hash6', '2026-04-22 09:00:00');
 
 -- create a new public channel in workspace1 by an admin
 INSERT INTO Channel
     (channel_id, workspace_id, name, channel_type, creator_user_id, created_at)
-SELECT 5, 1, 'linear-algebra', 'public', 2, '2026-04-10 12:00:00'
+SELECT 6, 1, 'linear-algebra', 'public', 2, '2026-04-10 12:00:00'
 WHERE EXISTS (
     SELECT 1
-FROM WorkspaceAdmin
-WHERE workspace_id = 1
-    AND user_id IN (1, 2)
+    FROM WorkspaceMembership
+    WHERE workspace_id = 1
+    AND user_id = 2
 );
 
 -- admin in each workspace
@@ -27,18 +27,27 @@ FROM ChannelInvitation ci
 WHERE w.workspace_id = 1
     AND ci.status = 'pending'
     AND c.channel_type = 'public'
-    AND ci.invited_at < NOW() - INTERVAL
-'5 days'
+    AND ci.invited_at < NOW() - INTERVAL '5 days'
 GROUP BY c.channel_id;
 
 -- messages in chronological order in channel 1
-SELECT m.channel_id, m.created_at, m.message_id, m.body
+SELECT 
+    m.message_id,
+    m.channel_id,
+    m.created_at,
+    m.sender_user_id,
+    m.body
 FROM message m
 WHERE m.channel_id = 1
 ORDER BY m.created_at ASC;
 
 -- messages sent by user2
-SELECT m.sender_user_id, m.body, m.channel_id
+SELECT 
+    m.message_id,
+    m.sender_user_id,
+    m.body,
+    m.channel_id,
+    m.created_at
 FROM message m
 WHERE m.sender_user_id = 2;
 
