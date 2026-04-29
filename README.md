@@ -1,54 +1,119 @@
-# CS6083 Project 1 — **snickr** database design
+# CS6083 Workspace Messaging Project
 
-Database design and SQL artifacts for **snickr**, a Slack-like collaboration app.
+React frontend + Django REST API backend + PostgreSQL database.
 
 ## Project structure
 
 ```text
 Simple_Slack/
-├── README.md
-├── diagrams/
-│   ├── ER_Diagram.mmd
-│   ├── ER_Diagram.png
-│   └── ER_Diagram.svg
+├── backend/                 # Django project
+│   ├── settings.py
+│   ├── urls.py
+│   └── apps/                # Domain apps (accounts/workspaces/channels/messages/invitations)
+├── frontend/                # Vite + React frontend
+├── diagrams/                # ER diagrams from Project 1
+├── sql/                     # Project 1 SQL artifacts
 ├── report/
-│   └── reports.md
-├── sql/
-│   ├── project1_table.sql
-│   ├── project1_data.sql
-│   └── project1_queries.sql
 └── output/
-    └── output.md
 ```
 
-## Environment
+## Prerequisites
 
-- **Database:** PostgreSQL
-- **Client:** `psql` (tested locally)
+- Python 3.11+
+- Node.js 18+ and npm
+- PostgreSQL 14+ (local)
 
-## How to run
+## Backend setup (Django)
 
-From the project root, create a database and run the SQL files in order: schema, sample data, then queries.
+From project root:
 
 ```bash
-createdb project1_db
-psql -d project1_db -f sql/project1_table.sql
-psql -d project1_db -f sql/project1_data.sql
-psql -d project1_db -f sql/project1_queries.sql > output/output.md
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt  # if present
 ```
 
-## Contents
+If `requirements.txt` is not present, install the core backend packages manually:
 
-- **diagrams/** — ER source (Mermaid) and exports (SVG/PNG)
-- **report/** — project write-up
-- **sql/** — table definitions, sample data, and query scripts
-- **output/** — saved query output (e.g. from the command above)
+```bash
+pip install django djangorestframework djangorestframework-simplejwt django-cors-headers psycopg2-binary
+```
 
-## Notes
+Create and load environment variables:
 
-The work is split into four parts:
+```bash
+cp .env.example .env  # if available
+set -a
+source .env
+set +a
+```
 
-1. Schema design
-2. Sample data
-3. SQL queries
-4. Report and diagrams
+Run migrations and start backend:
+
+```bash
+python manage.py migrate
+python manage.py runserver
+```
+
+Backend runs at `http://127.0.0.1:8000`.
+
+## Frontend setup (React + Vite)
+
+From `frontend/`:
+
+```bash
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:5173`.
+
+Recommended frontend env values:
+
+```env
+VITE_API_URL=http://127.0.0.1:8000
+VITE_USE_MOCK=false
+```
+
+## Local PostgreSQL setup
+
+### 1) Start PostgreSQL (Homebrew on macOS)
+
+```bash
+brew services start postgresql@16
+```
+
+### 2) Create database user and database
+
+Open `psql` with a superuser and run:
+
+```sql
+CREATE ROLE your_pg_user WITH LOGIN PASSWORD 'your_pg_password';
+CREATE DATABASE simple_slack OWNER your_pg_user;
+```
+
+### 3) Configure `.env`
+
+```env
+DB_NAME=simple_slack
+DB_USER=your_pg_user
+DB_PASSWORD=your_pg_password
+DB_HOST=localhost
+DB_PORT=5432
+FRONTEND_ORIGIN=http://localhost:5173
+```
+
+### 4) Apply schema
+
+```bash
+python manage.py migrate
+```
+
+## Quick fallback for demo (SQLite)
+
+If local PostgreSQL is not ready yet:
+
+```bash
+USE_SQLITE=true python manage.py migrate
+USE_SQLITE=true python manage.py runserver
+```
