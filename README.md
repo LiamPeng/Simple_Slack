@@ -48,6 +48,12 @@ source .env
 set +a
 ```
 
+Required backend env values (minimum):
+
+```env
+DJANGO_SECRET_KEY=replace-with-a-secure-secret-key
+```
+
 Run migrations and start backend:
 
 ```bash
@@ -101,6 +107,7 @@ DB_PASSWORD=your_pg_password
 DB_HOST=localhost
 DB_PORT=5432
 FRONTEND_ORIGIN=http://localhost:5173
+DJANGO_SECRET_KEY=replace-with-a-secure-secret-key
 ```
 
 ### 4) Apply schema
