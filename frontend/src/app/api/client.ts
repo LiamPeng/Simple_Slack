@@ -34,7 +34,16 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-      window.location.href = '/login';
+    
+      const requestUrl = String(error.config?.url || '');
+      const isAuthCheckRequest = requestUrl.includes('/api/auth/me/');
+      const isAuthPage =
+        window.location.pathname === '/login' ||
+        window.location.pathname === '/register';
+    
+      if (!isAuthCheckRequest && !isAuthPage) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

@@ -20,6 +20,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkAuth = async () => {
+    const accessToken = localStorage.getItem('access_token');
+  
+    // No token means unauthenticated; skip /me request entirely.
+    if (!accessToken) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+  
     try {
       const currentUser = await authAPI.getCurrentUser();
       setUser(currentUser);

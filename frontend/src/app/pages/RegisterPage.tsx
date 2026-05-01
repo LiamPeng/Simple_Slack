@@ -3,6 +3,20 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { MessageSquare } from 'lucide-react';
 
+function getErrorMessage(err: any, fallback: string): string {
+  const data = err?.response?.data;
+  if (!data) return fallback;
+  if (typeof data.detail === 'string' && data.detail) return data.detail;
+  if (typeof data.message === 'string' && data.message) return data.message;
+  if (typeof data === 'string' && data) return data;
+  if (typeof data === 'object' && data !== null) {
+    const firstValue = Object.values(data)[0];
+    if (Array.isArray(firstValue) && typeof firstValue[0] === 'string') return firstValue[0];
+    if (typeof firstValue === 'string') return firstValue;
+  }
+  return fallback;
+}
+
 export function RegisterPage() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -28,7 +42,7 @@ export function RegisterPage() {
       await register(username, email, password, passwordConfirm);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(getErrorMessage(err, 'Registration failed. Please try again.'));
     } finally {
       setLoading(false);
     }
