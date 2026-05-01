@@ -20,6 +20,7 @@ function getErrorMessage(err: any, fallback: string): string {
 export function RegisterPage() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState('');
@@ -39,7 +40,7 @@ export function RegisterPage() {
     setLoading(true);
 
     try {
-      await register(username, email, password, passwordConfirm);
+      await register(username, email, nickname, password, passwordConfirm);
       navigate('/dashboard');
     } catch (err: any) {
       setError(getErrorMessage(err, 'Registration failed. Please try again.'));
@@ -74,7 +75,7 @@ export function RegisterPage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
+                Username<span className="text-red-500 ml-1">*</span>
               </label>
               <input
                 id="username"
@@ -89,7 +90,7 @@ export function RegisterPage() {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
+                Email<span className="text-red-500 ml-1">*</span>
               </label>
               <input
                 id="email"
@@ -103,8 +104,22 @@ export function RegisterPage() {
             </div>
 
             <div>
+              <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">
+                Nickname
+              </label>
+              <input
+                id="nickname"
+                name="nickname"
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
+                Password<span className="text-red-500 ml-1">*</span>
               </label>
               <input
                 id="password"
@@ -119,7 +134,7 @@ export function RegisterPage() {
 
             <div>
               <label htmlFor="passwordConfirm" className="block text-sm font-medium text-gray-700">
-                Confirm Password
+                Confirm Password<span className="text-red-500 ml-1">*</span>
               </label>
               <input
                 id="passwordConfirm"
