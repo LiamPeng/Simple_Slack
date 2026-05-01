@@ -2,13 +2,17 @@ import apiClient from './client';
 
 export interface User {
   id: number;
+  user_id: number;
   username: string;
   email: string;
+  nickname: string;
+  created_at: string;
 }
 
 export interface RegisterData {
   username: string;
   email: string;
+  nickname?: string;
   password: string;
   passwordConfirm: string;
 }
@@ -34,6 +38,7 @@ export const authAPI = {
     const response = await apiClient.post<AuthResponse>('/api/auth/register/', {
       username: data.username,
       email: data.email,
+      nickname: data.nickname ?? '',
       password: data.password,
     });
     persistTokens(response.data.access, response.data.refresh);

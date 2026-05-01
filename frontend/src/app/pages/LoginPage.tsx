@@ -3,6 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { MessageSquare } from 'lucide-react';
 
+function getErrorMessage(err: any, fallback: string): string {
+  const data = err?.response?.data;
+  if (!data) return fallback;
+  if (typeof data.detail === 'string' && data.detail) return data.detail;
+  if (typeof data.message === 'string' && data.message) return data.message;
+  if (typeof data === 'string' && data) return data;
+  return fallback;
+}
+
 export function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +29,7 @@ export function LoginPage() {
       await login(username, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      setError(getErrorMessage(err, 'Login failed. Please check your credentials.'));
     } finally {
       setLoading(false);
     }
@@ -43,11 +52,6 @@ export function LoginPage() {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded text-sm">
-            <p className="font-semibold mb-2">🎉 演示账户 (Demo Accounts):</p>
-            <p className="mb-1"><strong>Alice:</strong> username: <code className="bg-blue-100 px-1 rounded">alice</code> / password: <code className="bg-blue-100 px-1 rounded">password123</code></p>
-            <p><strong>Bob:</strong> username: <code className="bg-blue-100 px-1 rounded">bob</code> / password: <code className="bg-blue-100 px-1 rounded">password123</code></p>
-          </div>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">

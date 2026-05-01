@@ -114,6 +114,6 @@ python manage.py migrate
 If local PostgreSQL is not ready yet:
 
 ```bash
-USE_SQLITE=true python manage.py migrate
-USE_SQLITE=true python manage.py runserver
+python manage.py migrate
+python manage.py runserver
 ```
