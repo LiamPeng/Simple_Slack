@@ -3,9 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { workspacesAPI, WorkspaceDetail, CreateChannelData } from '../api/workspaces';
 import { Plus, Hash, Lock, Users, UserPlus, Shield, Settings } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export function WorkspaceDetailPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
+  const { user } = useAuth();
   const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
@@ -45,6 +47,27 @@ export function WorkspaceDetailPage() {
       </AppLayout>
     );
   }
+
+  const currentMembership = workspace.members.find((member) => member.user_id === user?.id);
+  const isCurrentUserAdmin = currentMembership?.role === 'admin';
+
+  const handlePromoteDemote = async (userId: number, role: 'admin' | 'member') => {
+    try {
+      await workspacesAPI.updateMemberRole(workspace.id, userId, role);
+      await loadWorkspace();
+    } catch (error) {
+      console.error('Failed to update role:', error);
+    }
+  };
+
+  const handleRemoveMember = async (userId: number) => {
+    try {
+      await workspacesAPI.removeMember(workspace.id, userId);
+      await loadWorkspace();
+    } catch (error) {
+      console.error('Failed to remove member:', error);
+    }
+  };
 
   return (
     <AppLayout>
@@ -97,17 +120,35 @@ export function WorkspaceDetailPage() {
             {workspace.members.map((member) => (
               <div key={member.id} className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <div className="w-10 h-10 rounded bg-blue-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                  {member.user.username.charAt(0).toUpperCase()}
+                  {member.username.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <p className="font-medium text-gray-900 truncate">{member.user.username}</p>
+                    <p className="font-medium text-gray-900 truncate">{member.username}</p>
                     {member.role === 'admin' && (
                       <Shield className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 truncate">{member.user.email}</p>
+                  <p className="text-xs text-gray-500 truncate">{member.email}</p>
                 </div>
+                {isCurrentUserAdmin && member.user_id !== user?.id && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        handlePromoteDemote(member.user_id, member.role === 'admin' ? 'member' : 'admin')
+                      }
+                      className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
+                    >
+                      {member.role === 'admin' ? 'Demote' : 'Promote'}
+                    </button>
+                    <button
+                      onClick={() => handleRemoveMember(member.user_id)}
+                      className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -242,7 +283,7 @@ function CreateChannelModal({
 }
 
 function InviteUserModal({ workspaceId, onClose }: { workspaceId: number; onClose: () => void }) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -254,9 +295,9 @@ function InviteUserModal({ workspaceId, onClose }: { workspaceId: number; onClos
     setLoading(true);
 
     try {
-      await workspacesAPI.inviteUser(workspaceId, username);
+      await workspacesAPI.inviteUser(workspaceId, email);
       setSuccess(true);
-      setUsername('');
+      setEmail('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send invitation');
     } finally {
@@ -283,17 +324,17 @@ function InviteUserModal({ workspaceId, onClose }: { workspaceId: number; onClos
 
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-              Username
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email
             </label>
             <input
-              id="username"
-              type="text"
+              id="email"
+              type="email"
               required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter username to invite"
+              placeholder="Enter email to invite"
             />
           </div>
 

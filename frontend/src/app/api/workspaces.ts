@@ -10,11 +10,9 @@ export interface Workspace {
 
 export interface WorkspaceMember {
   id: number;
-  user: {
-    id: number;
-    username: string;
-    email: string;
-  };
+  user_id: number;
+  username: string;
+  email: string;
   role: 'admin' | 'member';
   joined_at: string;
 }
@@ -69,9 +67,18 @@ export const workspacesAPI = {
     return response.data;
   },
 
-  inviteUser: async (workspaceId: number, inviteeUsername: string): Promise<void> => {
+  inviteUser: async (workspaceId: number, inviteeEmail: string): Promise<void> => {
     await apiClient.post(`/api/workspaces/${workspaceId}/invite/`, {
-      invitee_username: inviteeUsername,
+      invitee_email: inviteeEmail,
     });
+  },
+
+  updateMemberRole: async (workspaceId: number, userId: number, role: 'admin' | 'member'): Promise<WorkspaceMember> => {
+    const response = await apiClient.patch(`/api/workspaces/${workspaceId}/members/${userId}/role/`, { role });
+    return response.data;
+  },
+
+  removeMember: async (workspaceId: number, userId: number): Promise<void> => {
+    await apiClient.delete(`/api/workspaces/${workspaceId}/members/${userId}/`);
   },
 };

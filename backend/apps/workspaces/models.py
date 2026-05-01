@@ -10,6 +10,7 @@ class Workspace(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        db_table = "Workspace"
 
     def __str__(self):
         return self.name
@@ -26,6 +27,7 @@ class WorkspaceMembership(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = "WorkspaceMembership"
         constraints = [
             models.UniqueConstraint(fields=["workspace", "user"], name="uniq_workspace_user_membership"),
         ]

@@ -1,5 +1,5 @@
-from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from django.db import IntegrityError
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,14 +11,14 @@ from .models import Invitation
 from .serializers import CreateInvitationSerializer, InvitationSerializer
 from .services import accept_invitation, create_invitation, reject_invitation
 
-User = get_user_model()
-
-
 class InvitationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        queryset = Invitation.objects.filter(invitee=request.user, status=Invitation.Status.PENDING)
+        queryset = Invitation.objects.filter(
+            invitee_email__iexact=request.user.email,
+            status=Invitation.Status.PENDING,
+        )
         return Response(InvitationSerializer(queryset, many=True).data)
 
 
@@ -39,13 +39,13 @@ class WorkspaceInviteView(APIView):
             invitation = create_invitation(
                 inviter=request.user,
                 workspace=workspace,
-                invitee_username=serializer.validated_data["invitee_username"],
+                invitee_email=serializer.validated_data["invitee_email"],
                 channel=channel,
             )
-        except User.DoesNotExist:
-            return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         except PermissionError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except IntegrityError:
+            return Response({"detail": "Pending invitation already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(InvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
 

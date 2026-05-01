@@ -2,17 +2,14 @@ import apiClient from './client';
 
 export interface Invitation {
   id: number;
-  inviter: {
-    id: number;
-    username: string;
-  };
-  invitee: number;
-  workspace: {
-    id: number;
-    name: string;
-  };
+  inviter: number;
+  inviter_username: string;
+  invitee: number | null;
+  invitee_email: string;
+  workspace: number;
+  workspace_name: string;
   channel: number | null;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'declined';
   created_at: string;
   responded_at: string | null;
 }
