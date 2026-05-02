@@ -2,6 +2,7 @@ import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useSidebar } from '../context/SidebarContext';
+import { WorkspaceSidebarRefreshProvider } from '../context/WorkspaceSidebarRefreshContext';
 import { invitationsAPI } from '../api/invitations';
 import { workspacesAPI, WorkspaceDetail } from '../api/workspaces';
 import { MessageSquare, Search, Bell, Menu, X } from 'lucide-react';
@@ -18,6 +19,8 @@ export function AppLayout({ children, showWorkspaceSidebar = true }: AppLayoutPr
   const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
   const [loading, setLoading] = useState(showWorkspaceSidebar);
   const [pendingInvitationCount, setPendingInvitationCount] = useState(0);
+  const [sidebarDataVersion, setSidebarDataVersion] = useState(0);
+  const refreshWorkspaceSidebar = useCallback(() => setSidebarDataVersion((v) => v + 1), []);
 
   const refreshInvitationCount = useCallback(async () => {
     try {
@@ -50,7 +53,7 @@ export function AppLayout({ children, showWorkspaceSidebar = true }: AppLayoutPr
     if (showWorkspaceSidebar) {
       loadWorkspace();
     }
-  }, [workspaceId, channelId, showWorkspaceSidebar]);
+  }, [workspaceId, channelId, showWorkspaceSidebar, sidebarDataVersion]);
 
   const loadWorkspace = async () => {
     try {
@@ -63,7 +66,7 @@ export function AppLayout({ children, showWorkspaceSidebar = true }: AppLayoutPr
 
         for (const ws of workspaces) {
           const detail = await workspacesAPI.getWorkspaceDetail(ws.id);
-          const hasChannel = detail.channels.some(c => c.id === channelIdNum);
+          const hasChannel = detail.channels.some((c) => Number(c.id) === channelIdNum);
           if (hasChannel) {
             wId = ws.id;
             break;
@@ -91,6 +94,7 @@ export function AppLayout({ children, showWorkspaceSidebar = true }: AppLayoutPr
   };
 
   return (
+    <WorkspaceSidebarRefreshProvider refresh={refreshWorkspaceSidebar}>
     <div className="flex h-screen overflow-hidden bg-gray-100">
       {/* Sidebar - conditionally render based on isOpen */}
       {showWorkspaceSidebar && (
@@ -160,5 +164,6 @@ export function AppLayout({ children, showWorkspaceSidebar = true }: AppLayoutPr
         </div>
       </div>
     </div>
+    </WorkspaceSidebarRefreshProvider>
   );
 }

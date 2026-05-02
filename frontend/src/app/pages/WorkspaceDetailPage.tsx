@@ -6,6 +6,7 @@ import { invitationsAPI, type Invitation } from '../api/invitations';
 import { workspacesAPI, WorkspaceDetail, CreateChannelData } from '../api/workspaces';
 import { Plus, Hash, Lock, Users, UserPlus, Shield, Settings, Mail, Calendar, Trash2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useWorkspaceSidebarRefresh } from '../context/WorkspaceSidebarRefreshContext';
 
 const INVITATION_RESEND_WAIT_MS = 5 * 24 * 60 * 60 * 1000;
 
@@ -20,6 +21,7 @@ export function WorkspaceDetailPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const refreshWorkspaceSidebar = useWorkspaceSidebarRefresh();
   const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
   const [sentInvitations, setSentInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -334,7 +336,10 @@ export function WorkspaceDetailPage() {
         <CreateChannelModal
           workspaceId={Number(workspaceId)}
           onClose={() => setShowCreateChannel(false)}
-          onCreated={loadWorkspace}
+          onCreated={async () => {
+            await loadWorkspace();
+            refreshWorkspaceSidebar();
+          }}
         />
       )}
 
@@ -388,7 +393,7 @@ function CreateChannelModal({
 }: {
   workspaceId: number;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: () => void | Promise<void>;
 }) {
   const [name, setName] = useState('');
   const [channelType, setChannelType] = useState<'public' | 'private'>('public');
@@ -403,7 +408,7 @@ function CreateChannelModal({
     try {
       const data: CreateChannelData = { name, channel_type: channelType };
       await workspacesAPI.createChannel(workspaceId, data);
-      onCreated();
+      await onCreated();
       onClose();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Failed to create channel'));
