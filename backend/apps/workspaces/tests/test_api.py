@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from backend.apps.invitations.models import Invitation
-from backend.apps.workspaces.models import WorkspaceMembership
+from backend.apps.workspaces.models import Workspace, WorkspaceMembership
 from backend.apps.workspaces.services import create_workspace_with_creator
 
 
@@ -143,3 +143,40 @@ class WorkspaceApiTests(APITestCase):
             format="json",
         )
         self.assertEqual(self_demote.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_creator_can_delete_workspace(self):
+        workspace = self.client.post(reverse("workspace-list-create"), {"name": "Deletable"}, format="json").data
+        wid = workspace["id"]
+        delete_res = self.client.delete(reverse("workspace-detail", kwargs={"workspace_id": wid}))
+        self.assertEqual(delete_res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Workspace.objects.filter(pk=wid).exists())
+
+    def test_non_creator_admin_cannot_delete_workspace(self):
+        workspace = self.client.post(reverse("workspace-list-create"), {"name": "WS"}, format="json").data
+        wid = workspace["id"]
+        WorkspaceMembership.objects.create(workspace_id=wid, user=self.bob, role="member")
+        self.client.patch(
+            reverse("workspace-member-role", kwargs={"workspace_id": wid, "user_id": self.bob.pk}),
+            {"role": "admin"},
+            format="json",
+        )
+
+        bob_token = self.client.post(
+            reverse("login"), {"username": "bob", "password": "Pass123456!"}, format="json"
+        ).data["access"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {bob_token}")
+
+        delete_res = self.client.delete(reverse("workspace-detail", kwargs={"workspace_id": wid}))
+        self.assertEqual(delete_res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Workspace.objects.filter(pk=wid).exists())
+
+    def test_non_member_cannot_delete_workspace(self):
+        ws = create_workspace_with_creator(creator=self.user, name="PrivateWS", description="")
+        bob_token = self.client.post(
+            reverse("login"), {"username": "bob", "password": "Pass123456!"}, format="json"
+        ).data["access"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {bob_token}")
+
+        delete_res = self.client.delete(reverse("workspace-detail", kwargs={"workspace_id": ws.id}))
+        self.assertEqual(delete_res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Workspace.objects.filter(pk=ws.id).exists())

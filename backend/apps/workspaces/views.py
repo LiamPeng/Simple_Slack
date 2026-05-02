@@ -15,7 +15,7 @@ from .serializers import (
     WorkspaceMembershipSerializer,
     WorkspaceSerializer,
 )
-from .services import create_workspace_with_creator, remove_workspace_member, set_member_role
+from .services import create_workspace_with_creator, delete_workspace, remove_workspace_member, set_member_role
 
 
 class WorkspaceListCreateView(APIView):
@@ -45,6 +45,16 @@ class WorkspaceDetailView(APIView):
             return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
         return Response(WorkspaceDetailSerializer(workspace).data)
+
+    def delete(self, request, workspace_id):
+        workspace = get_object_or_404(Workspace, pk=workspace_id)
+        if not is_workspace_member(request.user, workspace):
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            delete_workspace(workspace=workspace, actor=request.user)
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class WorkspaceInvitationListView(APIView):
