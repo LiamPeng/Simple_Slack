@@ -64,3 +64,47 @@ class InvitationApiTests(APITestCase):
         invitation.refresh_from_db()
         self.assertIsNotNone(invitation.invitee)
         self.assertEqual(invitation.invitee.email, "new-user@example.com")
+
+    def test_invitee_sees_invitation_matched_by_linked_user_not_only_email(self):
+        """Pending invites should appear when invitee FK matches, even if invitee_email drifts."""
+        inv = Invitation.objects.create(
+            inviter=self.alice,
+            invitee=self.bob,
+            invitee_email="legacy-or-wrong@example.com",
+            workspace=self.workspace,
+            status=Invitation.Status.PENDING,
+        )
+        self._auth("bob", "Pass123456!")
+        list_res = self.client.get(reverse("invitation-list"))
+        self.assertEqual(list_res.status_code, status.HTTP_200_OK)
+        ids = [row["id"] for row in list_res.data]
+        self.assertIn(inv.id, ids)
+
+    def test_admin_can_cancel_pending_invitation(self):
+        self._auth("alice", "Pass123456!")
+        invite_res = self.client.post(
+            reverse("workspace-invite", kwargs={"workspace_id": self.workspace.id}),
+            {"invitee_email": "bob@example.com"},
+            format="json",
+        )
+        self.assertEqual(invite_res.status_code, status.HTTP_201_CREATED)
+        inv_id = invite_res.data["id"]
+
+        cancel_res = self.client.post(reverse("invitation-cancel", kwargs={"invitation_id": inv_id}), {}, format="json")
+        self.assertEqual(cancel_res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Invitation.objects.filter(pk=inv_id).exists())
+
+    def test_non_admin_cannot_cancel_workspace_invitation(self):
+        self._auth("alice", "Pass123456!")
+        invite_res = self.client.post(
+            reverse("workspace-invite", kwargs={"workspace_id": self.workspace.id}),
+            {"invitee_email": "bob@example.com"},
+            format="json",
+        )
+        self.assertEqual(invite_res.status_code, status.HTTP_201_CREATED)
+        inv_id = invite_res.data["id"]
+
+        self._auth("bob", "Pass123456!")
+        cancel_res = self.client.post(reverse("invitation-cancel", kwargs={"invitation_id": inv_id}), {}, format="json")
+        self.assertEqual(cancel_res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Invitation.objects.filter(pk=inv_id).exists())

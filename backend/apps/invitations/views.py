@@ -1,5 +1,6 @@
-from django.shortcuts import get_object_or_404
 from django.db import IntegrityError
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,15 +10,15 @@ from backend.apps.workspaces.models import Workspace
 
 from .models import Invitation
 from .serializers import CreateInvitationSerializer, InvitationSerializer
-from .services import accept_invitation, create_invitation, reject_invitation
+from .services import accept_invitation, cancel_pending_invitation, create_invitation, reject_invitation
 
 class InvitationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        queryset = Invitation.objects.filter(
-            invitee_email__iexact=request.user.email,
-            status=Invitation.Status.PENDING,
+        normalized_email = (request.user.email or "").strip().lower()
+        queryset = Invitation.objects.filter(status=Invitation.Status.PENDING).filter(
+            Q(invitee=request.user) | Q(invitee_email__iexact=normalized_email)
         )
         return Response(InvitationSerializer(queryset, many=True).data)
 
@@ -71,6 +72,20 @@ class InvitationRejectView(APIView):
         invitation = get_object_or_404(Invitation, pk=invitation_id)
         try:
             reject_invitation(invitation=invitation, user=request.user)
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class InvitationCancelView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, invitation_id):
+        invitation = get_object_or_404(Invitation, pk=invitation_id)
+        try:
+            cancel_pending_invitation(invitation=invitation, actor=request.user)
         except PermissionError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except ValueError as exc:

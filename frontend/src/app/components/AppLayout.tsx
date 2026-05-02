@@ -1,7 +1,8 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useSidebar } from '../context/SidebarContext';
+import { invitationsAPI } from '../api/invitations';
 import { workspacesAPI, WorkspaceDetail } from '../api/workspaces';
 import { MessageSquare, Search, Bell, Menu, X } from 'lucide-react';
 
@@ -16,6 +17,34 @@ export function AppLayout({ children, showWorkspaceSidebar = true }: AppLayoutPr
   const location = useLocation();
   const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
   const [loading, setLoading] = useState(showWorkspaceSidebar);
+  const [pendingInvitationCount, setPendingInvitationCount] = useState(0);
+
+  const refreshInvitationCount = useCallback(async () => {
+    try {
+      const list = await invitationsAPI.getInvitations();
+      setPendingInvitationCount(list.filter((inv) => inv.status === 'pending').length);
+    } catch {
+      setPendingInvitationCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshInvitationCount();
+  }, [location.pathname, refreshInvitationCount]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshInvitationCount();
+      }
+    };
+    const id = window.setInterval(tick, 45000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [refreshInvitationCount]);
 
   useEffect(() => {
     if (showWorkspaceSidebar) {
@@ -112,10 +141,15 @@ export function AppLayout({ children, showWorkspaceSidebar = true }: AppLayoutPr
 
             <Link
               to="/invitations"
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
               title="Invitations"
             >
               <Bell className="h-5 w-5" />
+              {pendingInvitationCount > 0 && (
+                <span className="absolute top-0 right-0 min-w-[1.125rem] h-[1.125rem] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold leading-none">
+                  {pendingInvitationCount > 99 ? '99+' : pendingInvitationCount}
+                </span>
+              )}
             </Link>
           </div>
         </div>

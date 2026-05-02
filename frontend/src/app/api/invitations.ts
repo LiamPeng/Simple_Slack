@@ -27,4 +27,8 @@ export const invitationsAPI = {
   rejectInvitation: async (invitationId: number): Promise<void> => {
     await apiClient.post(`/api/invitations/${invitationId}/reject/`);
   },
+
+  cancelInvitation: async (invitationId: number): Promise<void> => {
+    await apiClient.post(`/api/invitations/${invitationId}/cancel/`);
+  },
 };

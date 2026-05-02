@@ -63,3 +63,12 @@ def reject_invitation(*, invitation, user):
     invitation.status = Invitation.Status.DECLINED
     invitation.responded_at = timezone.now()
     invitation.save(update_fields=["invitee", "status", "responded_at"])
+
+
+def cancel_pending_invitation(*, invitation, actor):
+    """Workspace admin revokes a pending invitation (row deleted)."""
+    if not is_workspace_admin(actor, invitation.workspace):
+        raise PermissionError("Only workspace admins can cancel invitations")
+    if invitation.status != Invitation.Status.PENDING:
+        raise ValueError("Only pending invitations can be cancelled")
+    invitation.delete()

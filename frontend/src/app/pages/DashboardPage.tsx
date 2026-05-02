@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
+import { getApiErrorMessage } from '../api/client';
 import { workspacesAPI, Workspace } from '../api/workspaces';
 import { invitationsAPI, Invitation } from '../api/invitations';
 import { Plus, Users, Calendar, Bell } from 'lucide-react';
@@ -128,8 +129,8 @@ function CreateWorkspaceModal({ onClose, onCreated }: { onClose: () => void; onC
       await workspacesAPI.createWorkspace({ name, description });
       onCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create workspace');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to create workspace'));
     } finally {
       setLoading(false);
     }

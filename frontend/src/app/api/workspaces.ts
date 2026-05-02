@@ -1,5 +1,7 @@
 import apiClient from './client';
 
+import type { Invitation } from './invitations';
+
 export interface Workspace {
   id: number;
   name: string;
@@ -80,5 +82,10 @@ export const workspacesAPI = {
 
   removeMember: async (workspaceId: number, userId: number): Promise<void> => {
     await apiClient.delete(`/api/workspaces/${workspaceId}/members/${userId}/`);
+  },
+
+  getWorkspaceSentInvitations: async (workspaceId: number): Promise<Invitation[]> => {
+    const response = await apiClient.get(`/api/workspaces/${workspaceId}/invitations/`);
+    return response.data;
   },
 };

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getApiErrorMessage } from '../api/client';
 import { directMessagesAPI } from '../api/directMessages';
 import { useAuth } from '../context/AuthContext';
 import type { WorkspaceMember } from '../api/workspaces';
@@ -26,8 +27,8 @@ export function StartDirectMessageModal({ workspaceId, members, onClose }: Start
       const channel = await directMessagesAPI.getOrCreateDirectChannel(workspaceId, userId);
       navigate(`/channels/${channel.id}`);
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create direct message');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to create direct message'));
     } finally {
       setLoading(false);
     }
