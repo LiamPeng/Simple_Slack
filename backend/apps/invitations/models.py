@@ -23,6 +23,8 @@ class Invitation(models.Model):
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True, db_column="invited_at")
     responded_at = models.DateTimeField(null=True, blank=True)
+    last_notified_at = models.DateTimeField(null=True, blank=True)
+    notification_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = "WorkspaceInvitation"
