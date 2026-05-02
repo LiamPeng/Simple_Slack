@@ -4,19 +4,32 @@ import { AppLayout } from '../components/AppLayout';
 import { getApiErrorMessage } from '../api/client';
 import { invitationsAPI, type Invitation } from '../api/invitations';
 import { workspacesAPI, WorkspaceDetail, CreateChannelData } from '../api/workspaces';
-import { Plus, Hash, Lock, Users, UserPlus, Shield, Settings, Mail, Calendar, Trash2 } from 'lucide-react';
+import { Plus, Hash, Lock, Users, UserPlus, Shield, Settings, Mail, Calendar, Trash2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useWorkspaceSidebarRefresh } from '../context/WorkspaceSidebarRefreshContext';
+
+const INVITATION_RESEND_WAIT_MS = 5 * 24 * 60 * 60 * 1000;
+
+function canResendInvitation(invitation: Invitation) {
+  return (
+    invitation.status === 'pending' &&
+    Date.now() - new Date(invitation.created_at).getTime() >= INVITATION_RESEND_WAIT_MS
+  );
+}
 
 export function WorkspaceDetailPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const refreshWorkspaceSidebar = useWorkspaceSidebarRefresh();
   const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
   const [sentInvitations, setSentInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showInviteUser, setShowInviteUser] = useState(false);
   const [showDeleteWorkspace, setShowDeleteWorkspace] = useState(false);
+  const [resendingInvitationId, setResendingInvitationId] = useState<number | null>(null);
+  const [invitationActionError, setInvitationActionError] = useState('');
 
   const loadWorkspace = useCallback(async () => {
     const wid = Number(workspaceId);
@@ -85,12 +98,30 @@ export function WorkspaceDetailPage() {
   };
 
   const handleCancelInvitation = async (invitationId: number) => {
+    setInvitationActionError('');
     try {
       await invitationsAPI.cancelInvitation(invitationId);
       const sent = await workspacesAPI.getWorkspaceSentInvitations(workspace.id);
       setSentInvitations(sent);
     } catch (error) {
       console.error('Failed to cancel invitation:', error);
+      setInvitationActionError(getApiErrorMessage(error, 'Failed to cancel invitation'));
+    }
+  };
+
+  const handleResendInvitation = async (invitationId: number) => {
+    setInvitationActionError('');
+    setResendingInvitationId(invitationId);
+    try {
+      const updatedInvitation = await invitationsAPI.resendInvitation(invitationId);
+      setSentInvitations((current) =>
+        current.map((invitation) => (invitation.id === invitationId ? updatedInvitation : invitation))
+      );
+    } catch (error) {
+      console.error('Failed to resend invitation:', error);
+      setInvitationActionError(getApiErrorMessage(error, 'Failed to resend invitation'));
+    } finally {
+      setResendingInvitationId(null);
     }
   };
 
@@ -173,6 +204,11 @@ export function WorkspaceDetailPage() {
               <Mail className="h-5 w-5 text-gray-600" />
               Pending invitations
             </h2>
+            {invitationActionError && (
+              <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {invitationActionError}
+              </div>
+            )}
             {sentInvitations.length === 0 ? (
               <p className="text-sm text-gray-500">No pending invitations.</p>
             ) : (
@@ -201,17 +237,28 @@ export function WorkspaceDetailPage() {
                             {inv.status}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-right">
-                          {inv.status === 'pending' && (
-                            <button
-                              type="button"
-                              onClick={() => handleCancelInvitation(inv.id)}
-                              className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-                            >
-                              Cancel invitation
-                            </button>
-                          )}
-                        </td>
+	                        <td className="px-4 py-2 text-right">
+	                          {inv.status === 'pending' && (
+	                            <div className="flex justify-end gap-2">
+	                              <button
+	                                type="button"
+	                                onClick={() => void handleResendInvitation(inv.id)}
+	                                disabled={!canResendInvitation(inv) || resendingInvitationId === inv.id}
+	                                className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
+	                              >
+	                                <RefreshCw className={`h-3 w-3 ${resendingInvitationId === inv.id ? 'animate-spin' : ''}`} />
+	                                {resendingInvitationId === inv.id ? 'Resending' : 'Resend'}
+	                              </button>
+	                              <button
+	                                type="button"
+	                                onClick={() => void handleCancelInvitation(inv.id)}
+	                                className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+	                              >
+	                                Cancel invitation
+	                              </button>
+	                            </div>
+	                          )}
+	                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -289,7 +336,10 @@ export function WorkspaceDetailPage() {
         <CreateChannelModal
           workspaceId={Number(workspaceId)}
           onClose={() => setShowCreateChannel(false)}
-          onCreated={loadWorkspace}
+          onCreated={async () => {
+            await loadWorkspace();
+            refreshWorkspaceSidebar();
+          }}
         />
       )}
 
@@ -343,7 +393,7 @@ function CreateChannelModal({
 }: {
   workspaceId: number;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: () => void | Promise<void>;
 }) {
   const [name, setName] = useState('');
   const [channelType, setChannelType] = useState<'public' | 'private'>('public');
@@ -358,7 +408,7 @@ function CreateChannelModal({
     try {
       const data: CreateChannelData = { name, channel_type: channelType };
       await workspacesAPI.createChannel(workspaceId, data);
-      onCreated();
+      await onCreated();
       onClose();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Failed to create channel'));

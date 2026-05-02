@@ -9,6 +9,7 @@ from backend.apps.channels.models import Channel
 from backend.apps.workspaces.models import Workspace
 
 from .models import Invitation
+from .notifications import resend_invitation_notification
 from .serializers import CreateInvitationSerializer, InvitationSerializer
 from .services import accept_invitation, cancel_pending_invitation, create_invitation, reject_invitation
 
@@ -45,6 +46,8 @@ class WorkspaceInviteView(APIView):
             )
         except PermissionError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError:
             return Response({"detail": "Pending invitation already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -91,3 +94,17 @@ class InvitationCancelView(APIView):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class InvitationResendView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, invitation_id):
+        invitation = get_object_or_404(Invitation, pk=invitation_id)
+        try:
+            resend_invitation_notification(invitation=invitation, actor=request.user)
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(InvitationSerializer(invitation).data)
