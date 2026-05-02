@@ -4,17 +4,28 @@ from django.utils import timezone
 
 from backend.apps.channels.models import ChannelMembership
 from backend.apps.core.access import is_workspace_admin
+from backend.apps.workspaces.models import WorkspaceMembership
 
 from .models import Invitation
 
 User = get_user_model()
 
 
+@transaction.atomic
 def create_invitation(*, inviter, workspace, invitee_email, channel=None):
     if not is_workspace_admin(inviter, workspace):
         raise PermissionError("Only workspace admins can invite users")
+    if channel and channel.workspace_id != workspace.id:
+        raise ValueError("Channel must belong to the invited workspace")
 
     invitee = User.objects.filter(email__iexact=invitee_email).first()
+    if invitee and channel is None:
+        if WorkspaceMembership.objects.filter(workspace=workspace, user=invitee).exists():
+            raise ValueError("User is already a workspace member")
+    if invitee and channel:
+        if ChannelMembership.objects.filter(channel=channel, user=invitee).exists():
+            raise ValueError("User is already a channel member")
+
     return Invitation.objects.create(
         inviter=inviter,
         invitee_email=invitee_email.strip().lower(),
@@ -37,8 +48,6 @@ def accept_invitation(*, invitation, user):
     invitation.status = Invitation.Status.ACCEPTED
     invitation.responded_at = timezone.now()
     invitation.save(update_fields=["invitee", "status", "responded_at"])
-
-    from backend.apps.workspaces.models import WorkspaceMembership
 
     WorkspaceMembership.objects.get_or_create(
         workspace=invitation.workspace,

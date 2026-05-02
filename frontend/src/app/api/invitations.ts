@@ -12,6 +12,8 @@ export interface Invitation {
   status: 'pending' | 'accepted' | 'declined';
   created_at: string;
   responded_at: string | null;
+  last_notified_at: string | null;
+  notification_count: number;
 }
 
 export const invitationsAPI = {
@@ -30,5 +32,10 @@ export const invitationsAPI = {
 
   cancelInvitation: async (invitationId: number): Promise<void> => {
     await apiClient.post(`/api/invitations/${invitationId}/cancel/`);
+  },
+
+  resendInvitation: async (invitationId: number): Promise<Invitation> => {
+    const response = await apiClient.post(`/api/invitations/${invitationId}/resend/`);
+    return response.data;
   },
 };

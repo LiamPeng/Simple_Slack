@@ -23,8 +23,18 @@ class InvitationSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
             "responded_at",
+            "last_notified_at",
+            "notification_count",
         ]
-        read_only_fields = ["id", "inviter", "status", "created_at", "responded_at"]
+        read_only_fields = [
+            "id",
+            "inviter",
+            "status",
+            "created_at",
+            "responded_at",
+            "last_notified_at",
+            "notification_count",
+        ]
 
 
 class CreateInvitationSerializer(serializers.Serializer):
