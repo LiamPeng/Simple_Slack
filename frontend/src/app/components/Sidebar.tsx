@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useState, useMemo, useEffect } from 'react';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { StartDirectMessageModal } from './StartDirectMessageModal';
+import { getApiErrorMessage } from '../api/client';
 import { workspacesAPI, CreateChannelData } from '../api/workspaces';
 import type { WorkspaceDetail } from '../api/workspaces';
 
@@ -300,8 +301,8 @@ function CreateChannelModal({ workspaceId, channelType, onClose }: CreateChannel
       onClose();
       // Reload the page to refresh sidebar
       window.location.reload();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create channel');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to create channel'));
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,26 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
+/** Prefer DRF `{ detail: string }`; fall back to `message` or field errors. */
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  const ax = error as AxiosError<{ detail?: unknown; message?: unknown } & Record<string, unknown>>;
+  const data = ax.response?.data;
+  if (!data || typeof data !== 'object') return fallback;
+
+  const detail = data.detail ?? data.message;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) return detail.filter((x) => typeof x === 'string').join(' ');
+
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(data)) {
+    if (key === 'detail' || key === 'message') continue;
+    if (typeof value === 'string') parts.push(`${key}: ${value}`);
+    else if (Array.isArray(value)) parts.push(`${key}: ${value.join(' ')}`);
+  }
+  if (parts.length) return parts.join(' ');
+
+  return fallback;
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const apiClient = axios.create({

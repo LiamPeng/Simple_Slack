@@ -14,6 +14,13 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        from backend.apps.invitations.models import Invitation
+
+        Invitation.objects.filter(
+            invitee_email__iexact=user.email,
+            invitee__isnull=True,
+            status=Invitation.Status.PENDING,
+        ).update(invitee=user)
         refresh = RefreshToken.for_user(user)
         return Response({
             "user": UserSerializer(user).data,
