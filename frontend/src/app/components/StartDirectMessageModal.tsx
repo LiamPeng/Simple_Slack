@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getApiErrorMessage } from '../api/client';
 import { directMessagesAPI } from '../api/directMessages';
 import { useAuth } from '../context/AuthContext';
 import type { WorkspaceMember } from '../api/workspaces';
@@ -16,7 +17,7 @@ export function StartDirectMessageModal({ workspaceId, members, onClose }: Start
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const otherMembers = members.filter(m => m.user.id !== user?.id);
+  const otherMembers = members.filter((m) => m.user_id !== user?.id);
 
   const handleSelectUser = async (userId: number) => {
     setError('');
@@ -26,8 +27,8 @@ export function StartDirectMessageModal({ workspaceId, members, onClose }: Start
       const channel = await directMessagesAPI.getOrCreateDirectChannel(workspaceId, userId);
       navigate(`/channels/${channel.id}`);
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create direct message');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to create direct message'));
     } finally {
       setLoading(false);
     }
@@ -57,16 +58,16 @@ export function StartDirectMessageModal({ workspaceId, members, onClose }: Start
               {otherMembers.map((member) => (
                 <button
                   key={member.id}
-                  onClick={() => handleSelectUser(member.user.id)}
+                  onClick={() => handleSelectUser(member.user_id)}
                   disabled={loading}
                   className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 rounded-md disabled:opacity-50 disabled:cursor-not-allowed text-left"
                 >
                   <div className="w-10 h-10 rounded bg-blue-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                    {member.user.username.charAt(0).toUpperCase()}
+                    {member.username.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{member.user.username}</p>
-                    <p className="text-sm text-gray-500 truncate">{member.user.email}</p>
+                    <p className="font-medium text-gray-900 truncate">{member.username}</p>
+                    <p className="text-sm text-gray-500 truncate">{member.email}</p>
                   </div>
                 </button>
               ))}

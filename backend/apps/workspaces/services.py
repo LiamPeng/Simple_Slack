@@ -12,3 +12,77 @@ def create_workspace_with_creator(*, creator, name, description=""):
         role=WorkspaceMembership.Role.ADMIN,
     )
     return workspace
+
+
+@transaction.atomic
+def set_member_role(*, workspace, actor, target_user_id, role):
+    actor_membership = WorkspaceMembership.objects.filter(
+        workspace=workspace,
+        user=actor,
+        role=WorkspaceMembership.Role.ADMIN,
+    ).first()
+    if not actor_membership:
+        raise PermissionError("Only workspace admins can update member roles")
+
+    membership = WorkspaceMembership.objects.select_for_update().filter(
+        workspace=workspace,
+        user_id=target_user_id,
+    ).first()
+    if not membership:
+        raise ValueError("Workspace member not found")
+
+    if membership.role == role:
+        return membership
+
+    demoting_admin = (
+        membership.role == WorkspaceMembership.Role.ADMIN and role == WorkspaceMembership.Role.MEMBER
+    )
+    if demoting_admin:
+        if membership.user_id == actor.pk:
+            raise PermissionError("You cannot remove your own admin role")
+        admin_count = WorkspaceMembership.objects.filter(
+            workspace=workspace,
+            role=WorkspaceMembership.Role.ADMIN,
+        ).count()
+        if admin_count <= 1:
+            raise ValueError("Cannot demote the last workspace admin")
+        if actor.pk != workspace.creator_id:
+            raise PermissionError("Only the workspace creator can remove admin role from another member")
+
+    membership.role = role
+    membership.save(update_fields=["role"])
+    return membership
+
+
+@transaction.atomic
+def remove_workspace_member(*, workspace, actor, target_user_id):
+    actor_is_admin = WorkspaceMembership.objects.filter(
+        workspace=workspace,
+        user=actor,
+        role=WorkspaceMembership.Role.ADMIN,
+    ).exists()
+    if not actor_is_admin:
+        raise PermissionError("Only workspace admins can remove members")
+
+    membership = WorkspaceMembership.objects.select_for_update().filter(
+        workspace=workspace,
+        user_id=target_user_id,
+    ).first()
+    if not membership:
+        raise ValueError("Workspace member not found")
+
+    if membership.user_id == workspace.creator_id and actor.pk != workspace.creator_id:
+        raise PermissionError("Cannot remove the workspace creator")
+
+    if membership.role == WorkspaceMembership.Role.ADMIN and actor.pk != workspace.creator_id:
+        raise PermissionError("Only the workspace creator can remove an admin")
+
+    if membership.role == WorkspaceMembership.Role.ADMIN:
+        admin_count = WorkspaceMembership.objects.filter(
+            workspace=workspace,
+            role=WorkspaceMembership.Role.ADMIN,
+        ).count()
+        if admin_count <= 1:
+            raise ValueError("Cannot remove the last workspace admin")
+
+    membership.delete()

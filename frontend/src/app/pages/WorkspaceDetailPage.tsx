@@ -1,30 +1,44 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
+import { getApiErrorMessage } from '../api/client';
+import { invitationsAPI, type Invitation } from '../api/invitations';
 import { workspacesAPI, WorkspaceDetail, CreateChannelData } from '../api/workspaces';
-import { Plus, Hash, Lock, Users, UserPlus, Shield, Settings } from 'lucide-react';
+import { Plus, Hash, Lock, Users, UserPlus, Shield, Settings, Mail, Calendar } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export function WorkspaceDetailPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
+  const { user } = useAuth();
   const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
+  const [sentInvitations, setSentInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showInviteUser, setShowInviteUser] = useState(false);
 
-  useEffect(() => {
-    loadWorkspace();
-  }, [workspaceId]);
-
-  const loadWorkspace = async () => {
+  const loadWorkspace = useCallback(async () => {
+    const wid = Number(workspaceId);
+    setLoading(true);
     try {
-      const data = await workspacesAPI.getWorkspaceDetail(Number(workspaceId));
+      const data = await workspacesAPI.getWorkspaceDetail(wid);
       setWorkspace(data);
+      const me = data.members.find((m) => m.user_id === user?.id);
+      if (me?.role === 'admin') {
+        const sent = await workspacesAPI.getWorkspaceSentInvitations(wid);
+        setSentInvitations(sent);
+      } else {
+        setSentInvitations([]);
+      }
     } catch (error) {
       console.error('Error loading workspace:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspaceId, user?.id]);
+
+  useEffect(() => {
+    void loadWorkspace();
+  }, [loadWorkspace]);
 
   if (loading) {
     return (
@@ -45,6 +59,38 @@ export function WorkspaceDetailPage() {
       </AppLayout>
     );
   }
+
+  const currentMembership = workspace.members.find((member) => member.user_id === user?.id);
+  const isCurrentUserAdmin = currentMembership?.role === 'admin';
+  const isWorkspaceCreator = user?.id === workspace.creator;
+
+  const handlePromoteDemote = async (userId: number, role: 'admin' | 'member') => {
+    try {
+      await workspacesAPI.updateMemberRole(workspace.id, userId, role);
+      await loadWorkspace();
+    } catch (error) {
+      console.error('Failed to update role:', error);
+    }
+  };
+
+  const handleRemoveMember = async (userId: number) => {
+    try {
+      await workspacesAPI.removeMember(workspace.id, userId);
+      await loadWorkspace();
+    } catch (error) {
+      console.error('Failed to remove member:', error);
+    }
+  };
+
+  const handleCancelInvitation = async (invitationId: number) => {
+    try {
+      await invitationsAPI.cancelInvitation(invitationId);
+      const sent = await workspacesAPI.getWorkspaceSentInvitations(workspace.id);
+      setSentInvitations(sent);
+    } catch (error) {
+      console.error('Failed to cancel invitation:', error);
+    }
+  };
 
   return (
     <AppLayout>
@@ -71,15 +117,23 @@ export function WorkspaceDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {isCurrentUserAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => setShowInviteUser(true)}
+                  className="flex items-center space-x-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>Invite</span>
+                </button>
+              ) : (
+                <p className="text-xs text-gray-500 text-right max-w-[220px]">
+                  You don't have permission to send invitations.
+                </p>
+              )}
               <button
-                onClick={() => setShowInviteUser(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <UserPlus className="h-4 w-4" />
-                <span>Invite</span>
-              </button>
-              <button
+                type="button"
                 onClick={() => setShowCreateChannel(true)}
                 className="flex items-center space-x-2 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
@@ -90,6 +144,60 @@ export function WorkspaceDetailPage() {
           </div>
         </div>
 
+        {isCurrentUserAdmin && (
+          <div className="px-6 pb-6 border-b border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+              <Mail className="h-5 w-5 text-gray-600" />
+              Pending invitations
+            </h2>
+            {sentInvitations.length === 0 ? (
+              <p className="text-sm text-gray-500">No pending invitations.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Email</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Invited</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Status</th>
+                      <th className="px-4 py-2 text-right font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {sentInvitations.map((inv) => (
+                      <tr key={inv.id}>
+                        <td className="px-4 py-2 text-gray-900">{inv.invitee_email}</td>
+                        <td className="px-4 py-2 text-gray-600">
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {new Date(inv.created_at).toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 capitalize">
+                            {inv.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {inv.status === 'pending' && (
+                            <button
+                              type="button"
+                              onClick={() => handleCancelInvitation(inv.id)}
+                              className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancel invitation
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Members List */}
         <div className="px-6 py-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Workspace Members</h2>
@@ -97,17 +205,57 @@ export function WorkspaceDetailPage() {
             {workspace.members.map((member) => (
               <div key={member.id} className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <div className="w-10 h-10 rounded bg-blue-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                  {member.user.username.charAt(0).toUpperCase()}
+                  {member.username.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <p className="font-medium text-gray-900 truncate">{member.user.username}</p>
+                    <p className="font-medium text-gray-900 truncate">{member.username}</p>
                     {member.role === 'admin' && (
                       <Shield className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 truncate">{member.user.email}</p>
+                  <p className="text-xs text-gray-500 truncate">{member.email}</p>
                 </div>
+                {isCurrentUserAdmin && member.user_id !== user?.id && (
+                  <div className="flex items-center gap-2">
+                    {member.role === 'member' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handlePromoteDemote(member.user_id, 'admin')}
+                          className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
+                        >
+                          Add to Admin
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMember(member.user_id)}
+                          className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                    {member.role === 'admin' && isWorkspaceCreator && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handlePromoteDemote(member.user_id, 'member')}
+                          className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
+                        >
+                          Remove from admins
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMember(member.user_id)}
+                          className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -122,10 +270,18 @@ export function WorkspaceDetailPage() {
         />
       )}
 
-      {showInviteUser && (
+      {showInviteUser && isCurrentUserAdmin && (
         <InviteUserModal
           workspaceId={Number(workspaceId)}
           onClose={() => setShowInviteUser(false)}
+          onInviteSent={async () => {
+            try {
+              const sent = await workspacesAPI.getWorkspaceSentInvitations(Number(workspaceId));
+              setSentInvitations(sent);
+            } catch (e) {
+              console.error('Failed to refresh invitations:', e);
+            }
+          }}
         />
       )}
     </AppLayout>
@@ -156,8 +312,8 @@ function CreateChannelModal({
       await workspacesAPI.createChannel(workspaceId, data);
       onCreated();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create channel');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to create channel'));
     } finally {
       setLoading(false);
     }
@@ -241,8 +397,16 @@ function CreateChannelModal({
   );
 }
 
-function InviteUserModal({ workspaceId, onClose }: { workspaceId: number; onClose: () => void }) {
-  const [username, setUsername] = useState('');
+function InviteUserModal({
+  workspaceId,
+  onClose,
+  onInviteSent,
+}: {
+  workspaceId: number;
+  onClose: () => void;
+  onInviteSent?: () => void | Promise<void>;
+}) {
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -254,11 +418,12 @@ function InviteUserModal({ workspaceId, onClose }: { workspaceId: number; onClos
     setLoading(true);
 
     try {
-      await workspacesAPI.inviteUser(workspaceId, username);
+      await workspacesAPI.inviteUser(workspaceId, email);
+      await onInviteSent?.();
       setSuccess(true);
-      setUsername('');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to send invitation');
+      setEmail('');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to send invitation'));
     } finally {
       setLoading(false);
     }
@@ -283,17 +448,17 @@ function InviteUserModal({ workspaceId, onClose }: { workspaceId: number; onClos
 
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-              Username
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email
             </label>
             <input
-              id="username"
-              type="text"
+              id="email"
+              type="email"
               required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter username to invite"
+              placeholder="Enter email to invite"
             />
           </div>
 

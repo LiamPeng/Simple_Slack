@@ -92,16 +92,16 @@ export function InvitationsPage() {
                     <div className="flex items-center space-x-2 mb-2">
                       <User className="h-5 w-5 text-gray-400" />
                       <span className="font-medium text-gray-900">
-                        {invitation.inviter.username}
+                        {invitation.inviter_username}
                       </span>
                       <span className="text-gray-600">invited you to</span>
                     </div>
 
                     <Link
-                      to={`/workspaces/${invitation.workspace.id}`}
+                      to={`/workspaces/${invitation.workspace}`}
                       className="text-lg font-semibold text-blue-600 hover:text-blue-700 mb-2 block"
                     >
-                      {invitation.workspace.name}
+                      {invitation.workspace_name}
                     </Link>
 
                     <div className="flex items-center text-sm text-gray-500">
