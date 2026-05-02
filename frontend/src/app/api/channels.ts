@@ -7,9 +7,8 @@ export interface Message {
     id: number;
     username: string;
   };
-  content: string;
+  body: string;
   created_at: string;
-  updated_at: string;
 }
 
 export interface ChannelMember {
@@ -38,7 +37,7 @@ export interface ChannelDetail {
 }
 
 export interface CreateMessageData {
-  content: string;
+  body: string;
 }
 
 export const channelsAPI = {

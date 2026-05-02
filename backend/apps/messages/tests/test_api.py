@@ -13,7 +13,7 @@ User = get_user_model()
 
 class MessageApiTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="alice", password="Pass123456!")
+        self.user = User.objects.create_user(username="alice", email="alice@example.com", password="Pass123456!")
         token = self.client.post(reverse("login"), {"username": "alice", "password": "Pass123456!"}, format="json").data["access"]
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         workspace = create_workspace_with_creator(creator=self.user, name="WS", description="")
@@ -22,7 +22,7 @@ class MessageApiTests(APITestCase):
     def test_create_and_search_message(self):
         create_res = self.client.post(
             reverse("channel-messages", kwargs={"channel_id": self.channel.id}),
-            {"content": "hello world"},
+            {"body": "hello world"},
             format="json",
         )
         self.assertEqual(create_res.status_code, status.HTTP_201_CREATED)

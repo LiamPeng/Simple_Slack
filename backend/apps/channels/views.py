@@ -43,7 +43,7 @@ class ChannelDetailView(APIView):
         payload["members"] = ChannelMembershipSerializer(channel.memberships.select_related("user"), many=True).data
         payload["messages"] = list(
             channel.messages.select_related("sender").values(
-                "id", "sender_id", "sender__username", "content", "created_at", "updated_at"
+                "id", "sender_id", "sender__username", "body", "created_at"
             )
         )
         return Response(payload)

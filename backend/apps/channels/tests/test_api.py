@@ -11,7 +11,7 @@ User = get_user_model()
 
 class ChannelApiTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="alice", password="Pass123456!")
+        self.user = User.objects.create_user(username="alice", email="alice@example.com", password="Pass123456!")
         token = self.client.post(reverse("login"), {"username": "alice", "password": "Pass123456!"}, format="json").data["access"]
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         self.workspace = create_workspace_with_creator(creator=self.user, name="WS", description="")
@@ -25,7 +25,7 @@ class ChannelApiTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
     def test_forbidden_for_non_member(self):
-        other = User.objects.create_user(username="bob", password="Pass123456!")
+        other = User.objects.create_user(username="bob", email="bob@example.com", password="Pass123456!")
         token = self.client.post(reverse("login"), {"username": "bob", "password": "Pass123456!"}, format="json").data["access"]
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         res = self.client.post(

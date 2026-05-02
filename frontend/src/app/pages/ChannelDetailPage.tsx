@@ -49,7 +49,7 @@ export function ChannelDetailPage() {
     setSendingMessage(true);
     try {
       const newMessage = await channelsAPI.createMessage(Number(channelId), {
-        content: messageContent,
+        body: messageContent,
       });
       setMessages([...messages, newMessage]);
       setMessageContent('');
@@ -153,7 +153,7 @@ export function ChannelDetailPage() {
                         </span>
                       </div>
                       <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                        {message.content}
+                        {message.body}
                       </p>
                     </div>
                   </div>

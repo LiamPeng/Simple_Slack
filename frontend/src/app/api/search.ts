@@ -1,7 +1,12 @@
 import apiClient from './client';
-import { Message } from './channels';
 
-export interface SearchResult extends Message {
+/** Matches GET /api/search/ payload (flat channel + names for UI). */
+export interface SearchResult {
+  id: number;
+  body: string;
+  created_at: string;
+  sender: { id: number; username: string };
+  channel: number;
   channel_name: string;
   workspace_name: string;
 }
