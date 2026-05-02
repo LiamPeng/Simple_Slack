@@ -86,3 +86,10 @@ def remove_workspace_member(*, workspace, actor, target_user_id):
             raise ValueError("Cannot remove the last workspace admin")
 
     membership.delete()
+
+
+@transaction.atomic
+def delete_workspace(*, workspace, actor):
+    if actor.pk != workspace.creator_id:
+        raise PermissionError("Only the workspace creator can delete this workspace")
+    workspace.delete()

@@ -1,20 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { getApiErrorMessage } from '../api/client';
 import { invitationsAPI, type Invitation } from '../api/invitations';
 import { workspacesAPI, WorkspaceDetail, CreateChannelData } from '../api/workspaces';
-import { Plus, Hash, Lock, Users, UserPlus, Shield, Settings, Mail, Calendar } from 'lucide-react';
+import { Plus, Hash, Lock, Users, UserPlus, Shield, Settings, Mail, Calendar, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export function WorkspaceDetailPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
   const [sentInvitations, setSentInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showInviteUser, setShowInviteUser] = useState(false);
+  const [showDeleteWorkspace, setShowDeleteWorkspace] = useState(false);
 
   const loadWorkspace = useCallback(async () => {
     const wid = Number(workspaceId);
@@ -92,6 +94,17 @@ export function WorkspaceDetailPage() {
     }
   };
 
+  const handleConfirmDeleteWorkspace = async () => {
+    try {
+      await workspacesAPI.deleteWorkspace(workspace.id);
+      setShowDeleteWorkspace(false);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Failed to delete workspace:', error);
+      alert(getApiErrorMessage(error, 'Failed to delete workspace'));
+    }
+  };
+
   return (
     <AppLayout>
       <div className="h-full overflow-y-auto bg-white">
@@ -118,6 +131,16 @@ export function WorkspaceDetailPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              {isWorkspaceCreator && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteWorkspace(true)}
+                  className="flex items-center space-x-2 px-3 py-2 text-sm border border-red-300 text-red-700 rounded-md hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete workspace</span>
+                </button>
+              )}
               {isCurrentUserAdmin ? (
                 <button
                   type="button"
@@ -283,6 +306,31 @@ export function WorkspaceDetailPage() {
             }
           }}
         />
+      )}
+
+      {showDeleteWorkspace && isWorkspaceCreator && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-gray-900 mb-3">Delete workspace</h2>
+            <p className="text-gray-700 text-sm mb-6">Are you sure you want to delete? This cannot be undone.</p>
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteWorkspace(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmDeleteWorkspace()}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </AppLayout>
   );

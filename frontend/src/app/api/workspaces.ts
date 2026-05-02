@@ -64,6 +64,10 @@ export const workspacesAPI = {
     return response.data;
   },
 
+  deleteWorkspace: async (workspaceId: number): Promise<void> => {
+    await apiClient.delete(`/api/workspaces/${workspaceId}/`);
+  },
+
   createChannel: async (workspaceId: number, data: CreateChannelData): Promise<Channel> => {
     const response = await apiClient.post(`/api/workspaces/${workspaceId}/channels/`, data);
     return response.data;
