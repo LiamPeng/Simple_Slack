@@ -1,21 +1,30 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from .models import Message
 
+User = get_user_model()
+
+
+class MessageSenderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username"]
+
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender_username = serializers.CharField(source="sender.username", read_only=True)
+    sender = MessageSenderSerializer(read_only=True)
 
     class Meta:
         model = Message
-        fields = ["id", "channel", "sender", "sender_username", "content", "created_at", "updated_at"]
-        read_only_fields = ["id", "sender", "created_at", "updated_at", "channel", "sender_username"]
+        fields = ["id", "channel", "sender", "body", "created_at"]
+        read_only_fields = ["id", "sender", "created_at", "channel"]
 
 
 class CreateMessageSerializer(serializers.Serializer):
-    content = serializers.CharField()
+    body = serializers.CharField()
 
-    def validate_content(self, value):
+    def validate_body(self, value):
         if not value.strip():
-            raise serializers.ValidationError("Message content cannot be empty")
+            raise serializers.ValidationError("Message body cannot be empty")
         return value

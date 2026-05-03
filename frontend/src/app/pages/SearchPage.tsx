@@ -104,7 +104,7 @@ export function SearchPage() {
                     </div>
 
                     <p className="text-gray-700 whitespace-pre-wrap break-words">
-                      {highlightQuery(result.content, query)}
+                      {highlightQuery(result.body, query)}
                     </p>
                   </Link>
                 ))}

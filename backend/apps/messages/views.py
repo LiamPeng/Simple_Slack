@@ -32,7 +32,7 @@ class ChannelMessagesView(APIView):
         message = Message.objects.create(
             channel=channel,
             sender=request.user,
-            content=serializer.validated_data["content"],
+            body=serializer.validated_data["body"],
         )
         return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
 
@@ -48,17 +48,18 @@ class SearchMessagesView(APIView):
         queryset = Message.objects.filter(
             Q(channel__channel_type="public", channel__workspace__memberships__user=request.user)
             | Q(channel__memberships__user=request.user),
-            content__icontains=q,
+            body__icontains=q,
         ).select_related("sender", "channel", "channel__workspace").distinct()
 
         results = [
             {
                 "id": m.id,
-                "content": m.content,
+                "body": m.body,
                 "created_at": m.created_at,
                 "sender": {"id": m.sender_id, "username": m.sender.username},
-                "channel": {"id": m.channel_id, "name": m.channel.name},
-                "workspace": {"id": m.channel.workspace_id, "name": m.channel.workspace.name},
+                "channel": m.channel_id,
+                "channel_name": m.channel.name,
+                "workspace_name": m.channel.workspace.name,
             }
             for m in queryset
         ]

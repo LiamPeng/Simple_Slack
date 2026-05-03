@@ -95,7 +95,7 @@ CREATE TABLE ChannelInvitation
     FOREIGN KEY (invited_by_user_id) REFERENCES AppUser(user_id)
 );
 
--- 9. Message
+-- 9. Message (flat sequence per channel; no threading)
 CREATE TABLE Message
 (
     message_id INT PRIMARY KEY,
@@ -106,3 +106,5 @@ CREATE TABLE Message
     FOREIGN KEY (channel_id) REFERENCES Channel(channel_id),
     FOREIGN KEY (sender_user_id) REFERENCES AppUser(user_id)
 );
+-- Chronological listing: optional index (Django: chat_messages_message.channel_id + created_at)
+CREATE INDEX idx_message_channel_created ON Message(channel_id, created_at);

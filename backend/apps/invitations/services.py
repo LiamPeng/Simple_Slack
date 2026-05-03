@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from backend.apps.channels.models import ChannelMembership
+from backend.apps.channels.models import Channel, ChannelMembership
 from backend.apps.core.access import is_workspace_admin
 from backend.apps.workspaces.models import WorkspaceMembership
 
@@ -13,10 +13,18 @@ User = get_user_model()
 
 @transaction.atomic
 def create_invitation(*, inviter, workspace, invitee_email, channel=None):
-    if not is_workspace_admin(inviter, workspace):
-        raise PermissionError("Only workspace admins can invite users")
-    if channel and channel.workspace_id != workspace.id:
-        raise ValueError("Channel must belong to the invited workspace")
+    if channel is not None:
+        if channel.workspace_id != workspace.id:
+            raise ValueError("Channel must belong to the invited workspace")
+        if channel.channel_type != Channel.ChannelType.PRIVATE:
+            raise ValueError("Channel invitations are only supported for private channels")
+        if channel.creator_id != inviter.id:
+            raise PermissionError("Only the channel creator can invite users to this private channel")
+        if not WorkspaceMembership.objects.filter(workspace=workspace, user=inviter).exists():
+            raise PermissionError("Inviter must be a workspace member")
+    else:
+        if not is_workspace_admin(inviter, workspace):
+            raise PermissionError("Only workspace admins can invite users to the workspace")
 
     invitee = User.objects.filter(email__iexact=invitee_email).first()
     if invitee and channel is None:
@@ -75,9 +83,16 @@ def reject_invitation(*, invitation, user):
 
 
 def cancel_pending_invitation(*, invitation, actor):
-    """Workspace admin revokes a pending invitation (row deleted)."""
-    if not is_workspace_admin(actor, invitation.workspace):
-        raise PermissionError("Only workspace admins can cancel invitations")
+    """Deletes a pending invitation (workspace admin or private-channel creator)."""
     if invitation.status != Invitation.Status.PENDING:
         raise ValueError("Only pending invitations can be cancelled")
-    invitation.delete()
+    workspace = invitation.workspace
+    if is_workspace_admin(actor, workspace):
+        invitation.delete()
+        return
+    if invitation.channel_id:
+        ch = invitation.channel
+        if ch.creator_id == actor.id:
+            invitation.delete()
+            return
+    raise PermissionError("Only workspace admins or the channel creator can cancel this invitation")

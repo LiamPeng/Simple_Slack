@@ -124,3 +124,23 @@ class ChannelApiTests(APITestCase):
         self.assertEqual(second.status_code, status.HTTP_200_OK)
         self.assertEqual(first.data["id"], second.data["id"])
         self.assertEqual(Channel.objects.filter(channel_type=Channel.ChannelType.DIRECT).count(), 1)
+
+    def test_channel_detail_messages_use_message_serializer_shape(self):
+        channel = create_channel_with_creator(
+            workspace=self.workspace,
+            creator=self.user,
+            name="general",
+            channel_type=Channel.ChannelType.PUBLIC,
+        )
+        self.client.post(
+            reverse("channel-messages", kwargs={"channel_id": channel.id}),
+            {"body": "hello detail"},
+            format="json",
+        )
+        detail_res = self.client.get(reverse("channel-detail", kwargs={"channel_id": channel.id}))
+        self.assertEqual(detail_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(detail_res.data["messages"]), 1)
+        msg = detail_res.data["messages"][0]
+        self.assertEqual(msg["body"], "hello detail")
+        self.assertEqual(msg["sender"]["username"], "alice")
+        self.assertEqual(msg["channel"], channel.id)

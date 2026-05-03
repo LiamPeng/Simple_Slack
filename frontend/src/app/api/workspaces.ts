@@ -73,10 +73,18 @@ export const workspacesAPI = {
     return response.data;
   },
 
-  inviteUser: async (workspaceId: number, inviteeEmail: string): Promise<void> => {
-    await apiClient.post(`/api/workspaces/${workspaceId}/invite/`, {
+  inviteUser: async (
+    workspaceId: number,
+    inviteeEmail: string,
+    channelId?: number
+  ): Promise<void> => {
+    const body: { invitee_email: string; channel_id?: number } = {
       invitee_email: inviteeEmail,
-    });
+    };
+    if (channelId != null) {
+      body.channel_id = channelId;
+    }
+    await apiClient.post(`/api/workspaces/${workspaceId}/invite/`, body);
   },
 
   updateMemberRole: async (workspaceId: number, userId: number, role: 'admin' | 'member'): Promise<WorkspaceMember> => {
@@ -88,6 +96,7 @@ export const workspacesAPI = {
     await apiClient.delete(`/api/workspaces/${workspaceId}/members/${userId}/`);
   },
 
+  /** Pending invitations sent by the current user in this workspace. */
   getWorkspaceSentInvitations: async (workspaceId: number): Promise<Invitation[]> => {
     const response = await apiClient.get(`/api/workspaces/${workspaceId}/invitations/`);
     return response.data;
