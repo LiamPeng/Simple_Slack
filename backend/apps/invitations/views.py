@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from backend.apps.channels.models import Channel
+from backend.apps.core.access import is_workspace_member
 from backend.apps.workspaces.models import Workspace
 
 from .models import Invitation
@@ -29,6 +30,9 @@ class WorkspaceInviteView(APIView):
 
     def post(self, request, workspace_id):
         workspace = get_object_or_404(Workspace, pk=workspace_id)
+        if not is_workspace_member(request.user, workspace):
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = CreateInvitationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

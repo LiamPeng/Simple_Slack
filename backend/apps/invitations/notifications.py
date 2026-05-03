@@ -11,10 +11,19 @@ from .models import Invitation
 RESEND_WAIT = timedelta(days=5)
 
 
+def _can_manage_invitation_notification(actor, invitation):
+    ws = invitation.workspace
+    if is_workspace_admin(actor, ws):
+        return True
+    if invitation.channel_id and invitation.channel.creator_id == actor.id:
+        return True
+    return False
+
+
 @transaction.atomic
 def resend_invitation_notification(*, invitation, actor):
-    if not is_workspace_admin(actor, invitation.workspace):
-        raise PermissionError("Only workspace admins can resend invitations")
+    if not _can_manage_invitation_notification(actor, invitation):
+        raise PermissionError("Only workspace admins or the channel creator can resend invitations")
     if invitation.status != Invitation.Status.PENDING:
         raise ValueError("Only pending invitations can be resent")
     if invitation.created_at > timezone.now() - RESEND_WAIT:

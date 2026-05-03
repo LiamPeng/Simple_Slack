@@ -25,6 +25,16 @@ class InvitationApiTests(APITestCase):
         token = self.client.post(reverse("login"), {"username": username, "password": password}, format="json").data["access"]
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
+    def test_non_workspace_member_cannot_send_invitation(self):
+        User.objects.create_user(username="outsider", email="outsider@example.com", password="Pass123456!")
+        self._auth("outsider", "Pass123456!")
+        res = self.client.post(
+            reverse("workspace-invite", kwargs={"workspace_id": self.workspace.id}),
+            {"invitee_email": "anyone@example.com"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_invite_and_accept(self):
         self._auth("alice", "Pass123456!")
         invite_res = self.client.post(
@@ -226,3 +236,125 @@ class InvitationApiTests(APITestCase):
         )
 
         self.assertEqual(resend_res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_private_channel_creator_member_can_invite(self):
+        WorkspaceMembership.objects.create(workspace=self.workspace, user=self.bob, role="member")
+        self._auth("bob", "Pass123456!")
+        ch_res = self.client.post(
+            reverse("workspace-channel-create", kwargs={"workspace_id": self.workspace.id}),
+            {"name": "hiring", "channel_type": "private"},
+            format="json",
+        )
+        self.assertEqual(ch_res.status_code, status.HTTP_201_CREATED)
+        channel_id = ch_res.data["id"]
+
+        invite_res = self.client.post(
+            reverse("workspace-invite", kwargs={"workspace_id": self.workspace.id}),
+            {"invitee_email": "carol@example.com", "channel_id": channel_id},
+            format="json",
+        )
+        self.assertEqual(invite_res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(invite_res.data["channel"], channel_id)
+
+    def test_workspace_admin_non_creator_cannot_invite_to_private_channel(self):
+        WorkspaceMembership.objects.create(workspace=self.workspace, user=self.bob, role="member")
+        self._auth("bob", "Pass123456!")
+        ch_res = self.client.post(
+            reverse("workspace-channel-create", kwargs={"workspace_id": self.workspace.id}),
+            {"name": "committee", "channel_type": "private"},
+            format="json",
+        )
+        self.assertEqual(ch_res.status_code, status.HTTP_201_CREATED)
+        channel_id = ch_res.data["id"]
+
+        self._auth("alice", "Pass123456!")
+        invite_res = self.client.post(
+            reverse("workspace-invite", kwargs={"workspace_id": self.workspace.id}),
+            {"invitee_email": "carol@example.com", "channel_id": channel_id},
+            format="json",
+        )
+        self.assertEqual(invite_res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cannot_attach_public_channel_to_invitation(self):
+        channel = Channel.objects.create(
+            workspace=self.workspace,
+            creator=self.alice,
+            name="general",
+            channel_type=Channel.ChannelType.PUBLIC,
+        )
+        ChannelMembership.objects.create(channel=channel, user=self.alice)
+        self._auth("alice", "Pass123456!")
+        invite_res = self.client.post(
+            reverse("workspace-invite", kwargs={"workspace_id": self.workspace.id}),
+            {"invitee_email": "carol@example.com", "channel_id": channel.id},
+            format="json",
+        )
+        self.assertEqual(invite_res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_private_channel_creator_can_cancel_own_pending_channel_invitation(self):
+        WorkspaceMembership.objects.create(workspace=self.workspace, user=self.bob, role="member")
+        self._auth("bob", "Pass123456!")
+        ch_res = self.client.post(
+            reverse("workspace-channel-create", kwargs={"workspace_id": self.workspace.id}),
+            {"name": "promotions", "channel_type": "private"},
+            format="json",
+        )
+        cid = ch_res.data["id"]
+        invite_res = self.client.post(
+            reverse("workspace-invite", kwargs={"workspace_id": self.workspace.id}),
+            {"invitee_email": "dana@example.com", "channel_id": cid},
+            format="json",
+        )
+        self.assertEqual(invite_res.status_code, status.HTTP_201_CREATED)
+        inv_id = invite_res.data["id"]
+
+        cancel_res = self.client.post(reverse("invitation-cancel", kwargs={"invitation_id": inv_id}), {}, format="json")
+        self.assertEqual(cancel_res.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_workspace_admin_can_cancel_another_users_private_channel_invitation(self):
+        WorkspaceMembership.objects.create(workspace=self.workspace, user=self.bob, role="member")
+        self._auth("bob", "Pass123456!")
+        ch_res = self.client.post(
+            reverse("workspace-channel-create", kwargs={"workspace_id": self.workspace.id}),
+            {"name": "secret", "channel_type": "private"},
+            format="json",
+        )
+        cid = ch_res.data["id"]
+        invite_res = self.client.post(
+            reverse("workspace-invite", kwargs={"workspace_id": self.workspace.id}),
+            {"invitee_email": "dana@example.com", "channel_id": cid},
+            format="json",
+        )
+        inv_id = invite_res.data["id"]
+
+        self._auth("alice", "Pass123456!")
+        cancel_res = self.client.post(reverse("invitation-cancel", kwargs={"invitation_id": inv_id}), {}, format="json")
+        self.assertEqual(cancel_res.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_channel_creator_can_resend_old_private_channel_invitation(self):
+        WorkspaceMembership.objects.create(workspace=self.workspace, user=self.bob, role="member")
+        channel = Channel.objects.create(
+            workspace=self.workspace,
+            creator=self.bob,
+            name="private-only",
+            channel_type=Channel.ChannelType.PRIVATE,
+        )
+        ChannelMembership.objects.create(channel=channel, user=self.bob)
+        invitation = Invitation.objects.create(
+            inviter=self.bob,
+            invitee=None,
+            invitee_email="remote@example.com",
+            workspace=self.workspace,
+            channel=channel,
+            status=Invitation.Status.PENDING,
+        )
+        old_created_at = timezone.now() - timedelta(days=6)
+        Invitation.objects.filter(pk=invitation.pk).update(created_at=old_created_at)
+        self._auth("bob", "Pass123456!")
+
+        resend_res = self.client.post(
+            reverse("invitation-resend", kwargs={"invitation_id": invitation.id}),
+            {},
+            format="json",
+        )
+        self.assertEqual(resend_res.status_code, status.HTTP_200_OK)

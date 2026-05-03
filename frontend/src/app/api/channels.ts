@@ -11,13 +11,11 @@ export interface Message {
   created_at: string;
 }
 
+/** Matches ChannelMembershipSerializer from GET /api/channels/:id/ */
 export interface ChannelMember {
   id: number;
-  user: {
-    id: number;
-    username: string;
-    email: string;
-  };
+  user_id: number;
+  username: string;
   joined_at: string;
 }
 
@@ -29,6 +27,7 @@ export interface ChannelDetail {
   creator: number;
   created_at: string;
   members: ChannelMember[];
+  messages: Message[];
   other_user?: {
     id: number;
     username: string;
@@ -43,11 +42,6 @@ export interface CreateMessageData {
 export const channelsAPI = {
   getChannelDetail: async (channelId: number): Promise<ChannelDetail> => {
     const response = await apiClient.get(`/api/channels/${channelId}/`);
-    return response.data;
-  },
-
-  getMessages: async (channelId: number): Promise<Message[]> => {
-    const response = await apiClient.get(`/api/channels/${channelId}/messages/`);
     return response.data;
   },
 

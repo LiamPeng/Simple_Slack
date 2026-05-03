@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from backend.apps.core.access import can_access_channel, is_workspace_member
+from backend.apps.messages.serializers import MessageSerializer
 from backend.apps.workspaces.models import Workspace
 
 from .models import Channel
@@ -83,9 +84,8 @@ class ChannelDetailView(APIView):
 
         payload = ChannelSerializer(channel, context={"request": request}).data
         payload["members"] = ChannelMembershipSerializer(channel.memberships.select_related("user"), many=True).data
-        payload["messages"] = list(
-            channel.messages.select_related("sender").values(
-                "id", "sender_id", "sender__username", "body", "created_at"
-            )
-        )
+        payload["messages"] = MessageSerializer(
+            channel.messages.select_related("sender"),
+            many=True,
+        ).data
         return Response(payload)

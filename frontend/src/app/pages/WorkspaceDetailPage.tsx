@@ -37,11 +37,11 @@ export function WorkspaceDetailPage() {
     try {
       const data = await workspacesAPI.getWorkspaceDetail(wid);
       setWorkspace(data);
-      const me = data.members.find((m) => m.user_id === user?.id);
-      if (me?.role === 'admin') {
+      try {
         const sent = await workspacesAPI.getWorkspaceSentInvitations(wid);
         setSentInvitations(sent);
-      } else {
+      } catch (inviteErr) {
+        console.error('Error loading invitations:', inviteErr);
         setSentInvitations([]);
       }
     } catch (error) {
@@ -198,11 +198,10 @@ export function WorkspaceDetailPage() {
           </div>
         </div>
 
-        {isCurrentUserAdmin && (
-          <div className="px-6 pb-6 border-b border-gray-100">
+        <div className="px-6 pb-6 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
               <Mail className="h-5 w-5 text-gray-600" />
-              Pending invitations
+              Your pending invitations
             </h2>
             {invitationActionError && (
               <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -210,13 +209,14 @@ export function WorkspaceDetailPage() {
               </div>
             )}
             {sentInvitations.length === 0 ? (
-              <p className="text-sm text-gray-500">No pending invitations.</p>
+              <p className="text-sm text-gray-500">You haven&apos;t sent any pending invitations.</p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-gray-200">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-2 text-left font-medium text-gray-700">Email</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Scope</th>
                       <th className="px-4 py-2 text-left font-medium text-gray-700">Invited</th>
                       <th className="px-4 py-2 text-left font-medium text-gray-700">Status</th>
                       <th className="px-4 py-2 text-right font-medium text-gray-700">Actions</th>
@@ -226,6 +226,18 @@ export function WorkspaceDetailPage() {
                     {sentInvitations.map((inv) => (
                       <tr key={inv.id}>
                         <td className="px-4 py-2 text-gray-900">{inv.invitee_email}</td>
+                        <td className="px-4 py-2 text-gray-700">
+                          {inv.channel == null ? (
+                            <span className="text-gray-600">Workspace</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1">
+                              <Lock className="h-3.5 w-3.5 text-gray-500" />
+                              #
+                              {workspace.channels.find((c) => c.id === inv.channel)?.name ??
+                                `channel-${inv.channel}`}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-2 text-gray-600">
                           <span className="inline-flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5" />
@@ -265,8 +277,7 @@ export function WorkspaceDetailPage() {
                 </table>
               </div>
             )}
-          </div>
-        )}
+        </div>
 
         {/* Members List */}
         <div className="px-6 py-6">

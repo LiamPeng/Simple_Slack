@@ -3,7 +3,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from backend.apps.core.access import is_workspace_admin, is_workspace_member
+from backend.apps.core.access import is_workspace_member
 from backend.apps.invitations.models import Invitation
 from backend.apps.invitations.serializers import InvitationSerializer
 
@@ -44,7 +44,7 @@ class WorkspaceDetailView(APIView):
         if not is_workspace_member(request.user, workspace):
             return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
-        return Response(WorkspaceDetailSerializer(workspace).data)
+        return Response(WorkspaceDetailSerializer(workspace, context={"request": request}).data)
 
     def delete(self, request, workspace_id):
         workspace = get_object_or_404(Workspace, pk=workspace_id)
@@ -62,13 +62,14 @@ class WorkspaceInvitationListView(APIView):
 
     def get(self, request, workspace_id):
         workspace = get_object_or_404(Workspace, pk=workspace_id)
-        if not is_workspace_admin(request.user, workspace):
+        if not is_workspace_member(request.user, workspace):
             return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
         queryset = Invitation.objects.filter(
             workspace=workspace,
             status=Invitation.Status.PENDING,
-        ).select_related("inviter", "workspace").order_by("-created_at")
+            inviter=request.user,
+        ).select_related("inviter", "workspace", "channel").order_by("-created_at")
         return Response(InvitationSerializer(queryset, many=True).data)
 
 

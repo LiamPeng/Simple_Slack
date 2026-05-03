@@ -42,7 +42,7 @@ class WorkspaceApiTests(APITestCase):
         self.assertEqual(remove_res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(WorkspaceMembership.objects.filter(workspace_id=workspace["id"], user=self.bob).exists())
 
-    def test_workspace_sent_invitations_admin_only(self):
+    def test_workspace_invitations_list_only_own_pending(self):
         ws = create_workspace_with_creator(creator=self.user, name="InvWS", description="")
         Invitation.objects.create(
             inviter=self.user,
@@ -57,12 +57,47 @@ class WorkspaceApiTests(APITestCase):
         self.assertEqual(len(res.data), 1)
         self.assertEqual(res.data[0]["invitee_email"], "bob@example.com")
 
+        WorkspaceMembership.objects.create(workspace=ws, user=self.bob, role="member")
         bob_token = self.client.post(
             reverse("login"), {"username": "bob", "password": "Pass123456!"}, format="json"
         ).data["access"]
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {bob_token}")
-        forbidden = self.client.get(reverse("workspace-invitations", kwargs={"workspace_id": ws.id}))
-        self.assertEqual(forbidden.status_code, status.HTTP_403_FORBIDDEN)
+        bob_res = self.client.get(reverse("workspace-invitations", kwargs={"workspace_id": ws.id}))
+        self.assertEqual(bob_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(bob_res.data), 0)
+
+    def test_workspace_invitations_each_user_sees_only_own_pending(self):
+        ws = create_workspace_with_creator(creator=self.user, name="InvWS2", description="")
+        WorkspaceMembership.objects.create(workspace=ws, user=self.bob, role="member")
+
+        Invitation.objects.create(
+            inviter=self.user,
+            invitee=None,
+            invitee_email="alice-invitee@example.com",
+            workspace_id=ws.id,
+            status=Invitation.Status.PENDING,
+        )
+        Invitation.objects.create(
+            inviter=self.bob,
+            invitee=None,
+            invitee_email="bob-invitee@example.com",
+            workspace_id=ws.id,
+            status=Invitation.Status.PENDING,
+        )
+
+        alice_res = self.client.get(reverse("workspace-invitations", kwargs={"workspace_id": ws.id}))
+        self.assertEqual(alice_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(alice_res.data), 1)
+        self.assertEqual(alice_res.data[0]["invitee_email"], "alice-invitee@example.com")
+
+        bob_token = self.client.post(
+            reverse("login"), {"username": "bob", "password": "Pass123456!"}, format="json"
+        ).data["access"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {bob_token}")
+        bob_res = self.client.get(reverse("workspace-invitations", kwargs={"workspace_id": ws.id}))
+        self.assertEqual(bob_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(bob_res.data), 1)
+        self.assertEqual(bob_res.data[0]["invitee_email"], "bob-invitee@example.com")
 
     def test_non_creator_admin_cannot_demote_creator_or_other_admin(self):
         workspace = self.client.post(reverse("workspace-list-create"), {"name": "WS"}, format="json").data

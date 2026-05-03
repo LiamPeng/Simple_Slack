@@ -104,6 +104,12 @@ export function InvitationsPage() {
                       {invitation.workspace_name}
                     </Link>
 
+                    {invitation.channel != null && (
+                      <p className="text-sm text-gray-600 mb-2">
+                        You&apos;ll also be added to a private channel when you accept.
+                      </p>
+                    )}
+
                     <div className="flex items-center text-sm text-gray-500">
                       <Calendar className="h-4 w-4 mr-1" />
                       {new Date(invitation.created_at).toLocaleString()}

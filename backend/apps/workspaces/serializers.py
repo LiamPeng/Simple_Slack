@@ -1,6 +1,8 @@
+from django.db.models import Q
 from rest_framework import serializers
 
 from backend.apps.channels.models import Channel
+from backend.apps.channels.serializers import ChannelSerializer
 
 from .models import Workspace, WorkspaceMembership
 
@@ -34,8 +36,13 @@ class WorkspaceDetailSerializer(WorkspaceSerializer):
         return WorkspaceMembershipSerializer(memberships, many=True).data
 
     def get_channels(self, obj):
-        channels = Channel.objects.filter(workspace=obj).values("id", "name", "channel_type", "creator_id", "created_at")
-        return list(channels)
+        request = self.context.get("request")
+        qs = Channel.objects.filter(workspace=obj).select_related("creator").prefetch_related("memberships__user")
+        if request and request.user.is_authenticated:
+            qs = qs.filter(
+                Q(channel_type=Channel.ChannelType.PUBLIC) | Q(memberships__user=request.user)
+            ).distinct()
+        return ChannelSerializer(qs, many=True, context={"request": request}).data
 
 
 class CreateWorkspaceSerializer(serializers.Serializer):
