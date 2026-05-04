@@ -342,7 +342,7 @@ function CreateChannelModal({ workspaceId, channelType, onClose }: CreateChannel
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. announcements"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
             <p className="mt-1 text-xs text-gray-500">
               {channelType === 'public'

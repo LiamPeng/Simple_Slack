@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { getApiErrorMessage } from '../api/client';
 import { workspacesAPI, Workspace } from '../api/workspaces';
@@ -7,6 +7,7 @@ import { invitationsAPI, Invitation } from '../api/invitations';
 import { Plus, Users, Calendar, Bell } from 'lucide-react';
 
 export function DashboardPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +16,14 @@ export function DashboardPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('createWorkspace') !== '1') return;
+    setShowCreateModal(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('createWorkspace');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const loadData = async () => {
     try {
