@@ -3,7 +3,7 @@ from django.db import models
 
 
 class Message(models.Model):
-    channel = models.ForeignKey("channels.Channel", on_delete=models.CASCADE, related_name="messages")
+    channel = models.ForeignKey("slack_channels.Channel", on_delete=models.CASCADE, related_name="messages")
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="messages")
     body = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

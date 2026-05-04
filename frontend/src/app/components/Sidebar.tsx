@@ -45,6 +45,12 @@ export function Sidebar({ workspace, currentChannelId }: SidebarProps) {
   const publicChannels = workspace?.channels.filter(c => c.channel_type === 'public') || [];
   const privateChannels = workspace?.channels.filter(c => c.channel_type === 'private') || [];
   const directChannels = workspace?.channels.filter(c => c.channel_type === 'direct') || [];
+  const renderUnreadBadge = (count: number) =>
+    count > 0 ? (
+      <span className="ml-auto min-w-[1.125rem] h-[1.125rem] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold leading-none">
+        {count > 99 ? '99+' : count}
+      </span>
+    ) : null;
 
   return (
     <div className="w-60 bg-gray-900 text-gray-100 flex flex-col h-screen">
@@ -93,7 +99,7 @@ export function Sidebar({ workspace, currentChannelId }: SidebarProps) {
                     <Link
                       key={channel.id}
                       to={`/channels/${channel.id}`}
-                      className={`flex items-center space-x-2 px-3 py-1.5 rounded text-sm ${
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm ${
                         currentChannelId === String(channel.id)
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -101,6 +107,7 @@ export function Sidebar({ workspace, currentChannelId }: SidebarProps) {
                     >
                       <Hash className="h-4 w-4 flex-shrink-0" />
                       <span className="truncate">{channel.name}</span>
+                      {renderUnreadBadge(channel.unread_count ?? 0)}
                     </Link>
                   ))}
                 </div>
@@ -135,7 +142,7 @@ export function Sidebar({ workspace, currentChannelId }: SidebarProps) {
                     <Link
                       key={channel.id}
                       to={`/channels/${channel.id}`}
-                      className={`flex items-center space-x-2 px-3 py-1.5 rounded text-sm ${
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm ${
                         currentChannelId === String(channel.id)
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -143,6 +150,7 @@ export function Sidebar({ workspace, currentChannelId }: SidebarProps) {
                     >
                       <Lock className="h-4 w-4 flex-shrink-0" />
                       <span className="truncate">{channel.name}</span>
+                      {renderUnreadBadge(channel.unread_count ?? 0)}
                     </Link>
                   ))}
                 </div>
@@ -180,7 +188,7 @@ export function Sidebar({ workspace, currentChannelId }: SidebarProps) {
                       <Link
                         key={channel.id}
                         to={`/channels/${channel.id}`}
-                        className={`flex items-center space-x-2 px-3 py-1.5 rounded text-sm ${
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm ${
                           currentChannelId === String(channel.id)
                             ? 'bg-blue-600 text-white'
                             : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -190,6 +198,7 @@ export function Sidebar({ workspace, currentChannelId }: SidebarProps) {
                           {displayName.charAt(0).toUpperCase()}
                         </div>
                         <span className="truncate">{displayName}</span>
+                        {renderUnreadBadge(channel.unread_count ?? 0)}
                       </Link>
                     );
                   })}

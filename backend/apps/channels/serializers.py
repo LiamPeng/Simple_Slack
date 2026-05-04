@@ -1,14 +1,17 @@
 from rest_framework import serializers
 
+from backend.apps.messages.models import Message
+
 from .models import Channel, ChannelMembership
 
 
 class ChannelSerializer(serializers.ModelSerializer):
     other_user = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Channel
-        fields = ["id", "workspace", "name", "channel_type", "creator", "created_at", "other_user"]
+        fields = ["id", "workspace", "name", "channel_type", "creator", "created_at", "other_user", "unread_count"]
         read_only_fields = ["id", "creator", "created_at", "workspace"]
 
     def get_other_user(self, obj):
@@ -25,6 +28,17 @@ class ChannelSerializer(serializers.ModelSerializer):
             "username": membership.user.username,
             "email": membership.user.email,
         }
+
+    def get_unread_count(self, obj):
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return 0
+
+        membership = obj.memberships.filter(user=request.user).only("last_read_at").first()
+        queryset = Message.objects.filter(channel=obj).exclude(sender=request.user)
+        if membership and membership.last_read_at:
+            queryset = queryset.filter(created_at__gt=membership.last_read_at)
+        return queryset.count()
 
 
 class ChannelMembershipSerializer(serializers.ModelSerializer):

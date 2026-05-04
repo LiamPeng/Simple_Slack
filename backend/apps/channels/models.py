@@ -15,6 +15,9 @@ class Channel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        # Keep legacy table name so DBs created under app label ``channels`` still match the ORM
+        # after the label was changed to ``slack_channels`` (Django Channels name collision).
+        db_table = "channels_channel"
         constraints = [
             models.UniqueConstraint(fields=["workspace", "name"], name="uniq_workspace_channel_name"),
         ]
@@ -27,8 +30,10 @@ class ChannelMembership(models.Model):
     channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="channel_memberships")
     joined_at = models.DateTimeField(auto_now_add=True)
+    last_read_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        db_table = "channels_channelmembership"
         constraints = [
             models.UniqueConstraint(fields=["channel", "user"], name="uniq_channel_user_membership"),
         ]

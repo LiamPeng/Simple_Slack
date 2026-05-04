@@ -19,7 +19,13 @@ class Invitation(models.Model):
     )
     invitee_email = models.EmailField()
     workspace = models.ForeignKey("workspaces.Workspace", on_delete=models.CASCADE, related_name="invitations")
-    channel = models.ForeignKey("channels.Channel", on_delete=models.CASCADE, related_name="invitations", null=True, blank=True)
+    channel = models.ForeignKey(
+        "slack_channels.Channel",
+        on_delete=models.CASCADE,
+        related_name="invitations",
+        null=True,
+        blank=True,
+    )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True, db_column="invited_at")
     responded_at = models.DateTimeField(null=True, blank=True)
