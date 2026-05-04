@@ -31,6 +31,7 @@ export interface Channel {
   channel_type: 'public' | 'private' | 'direct';
   creator: number;
   created_at: string;
+  unread_count: number;
   other_user?: {
     id: number;
     username: string;

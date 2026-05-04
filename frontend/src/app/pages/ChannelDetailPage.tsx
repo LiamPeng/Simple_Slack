@@ -5,6 +5,7 @@ import { channelsAPI, ChannelDetail, ChannelMember, Message } from '../api/chann
 import { workspacesAPI } from '../api/workspaces';
 import { getApiErrorMessage, getWebSocketRootUrl } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useWorkspaceSidebarRefresh } from '../context/WorkspaceSidebarRefreshContext';
 import { Send, Hash, Lock, Users, UserPlus } from 'lucide-react';
 
 export function ChannelDetailPage() {
@@ -18,6 +19,7 @@ export function ChannelDetailPage() {
   const [messageContent, setMessageContent] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const refreshWorkspaceSidebar = useWorkspaceSidebarRefresh();
 
   useEffect(() => {
     loadChannelData();
@@ -52,6 +54,19 @@ export function ChannelDetailPage() {
       ws.close();
     };
   }, [channelId, loading]);
+
+  useEffect(() => {
+    if (loading || !channelId) return;
+    const markRead = async () => {
+      try {
+        await channelsAPI.markChannelRead(Number(channelId));
+        refreshWorkspaceSidebar();
+      } catch {
+        // Keep channel view usable even if read-tracking fails
+      }
+    };
+    void markRead();
+  }, [channelId, loading, refreshWorkspaceSidebar]);
 
   useEffect(() => {
     scrollToBottom();

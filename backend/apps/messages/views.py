@@ -1,10 +1,11 @@
+from django.utils import timezone
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from backend.apps.channels.models import Channel
+from backend.apps.channels.models import Channel, ChannelMembership
 from backend.apps.core.access import can_access_channel
 
 from .models import Message
@@ -67,3 +68,17 @@ class SearchMessagesView(APIView):
             for m in queryset
         ]
         return Response(results)
+
+
+class MarkChannelReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, channel_id):
+        channel = get_object_or_404(Channel, pk=channel_id)
+        if not can_access_channel(request.user, channel):
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        membership, _ = ChannelMembership.objects.get_or_create(channel=channel, user=request.user)
+        membership.last_read_at = timezone.now()
+        membership.save(update_fields=["last_read_at"])
+        return Response(status=status.HTTP_204_NO_CONTENT)

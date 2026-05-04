@@ -30,6 +30,7 @@ class ChannelMembership(models.Model):
     channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="channel_memberships")
     joined_at = models.DateTimeField(auto_now_add=True)
+    last_read_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "channels_channelmembership"

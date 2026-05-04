@@ -49,4 +49,8 @@ export const channelsAPI = {
     const response = await apiClient.post(`/api/channels/${channelId}/messages/`, data);
     return response.data;
   },
+
+  markChannelRead: async (channelId: number): Promise<void> => {
+    await apiClient.post(`/api/channels/${channelId}/read/`);
+  },
 };
