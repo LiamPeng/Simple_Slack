@@ -23,6 +23,21 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+/** WebSocket origin: optional `VITE_WS_URL`, else derived from `VITE_API_URL` (http→ws, https→wss). */
+export function getWebSocketRootUrl(): string {
+  const explicit = import.meta.env.VITE_WS_URL as string | undefined;
+  if (explicit?.trim()) {
+    return explicit.trim().replace(/\/$/, '');
+  }
+  try {
+    const u = new URL(API_BASE_URL);
+    u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+    return u.origin;
+  } catch {
+    return 'ws://localhost:8000';
+  }
+}
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
