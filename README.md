@@ -6,13 +6,28 @@ React frontend + Django REST API backend + PostgreSQL database.
 
 ```text
 Simple_Slack/
-├── backend/                 # Django project
+├── manage.py                # Django CLI (always run from repo root)
+├── requirements.txt
+├── .env.example             # copy to `.env` here; Django loads it via python-dotenv
+├── backend/                 # Django project package
 │   ├── settings.py
 │   ├── urls.py
-│   └── apps/                # Domain apps (accounts/workspaces/channels/messages/invitations)
-├── frontend/                # Vite + React frontend
-├── diagrams/                # ER diagrams from Project 1
-├── sql/                     # Project 1 SQL artifacts
+│   ├── asgi.py              # ASGI entry (e.g. Daphne)
+│   ├── routing.py           # WebSocket URL routing
+│   ├── wsgi.py
+│   └── apps/                # Domain Django apps
+│       ├── accounts/
+│       ├── channels/        # Django app label: slack_channels (not `channels`)
+│       ├── core/
+│       ├── invitations/
+│       ├── messages/
+│       └── workspaces/
+├── frontend/                # Vite + React (`npm install` / `npm run dev` from here)
+│   ├── src/
+│   ├── public/
+│   └── vite.config.ts
+├── diagrams/                # ER diagrams (e.g. Project 1)
+├── sql/                     # SQL artifacts (schema, sample data, queries)
 ├── report/
 └── output/
 ```
@@ -21,7 +36,7 @@ Simple_Slack/
 
 - Python 3.11+
 - Node.js 18+ and npm
-- PostgreSQL 14+ (local)
+- PostgreSQL 14+ for a typical local setup (optional if you use SQLite — see **Quick fallback for demo (SQLite)**)
 
 ## Backend setup (Django)
 
@@ -30,13 +45,13 @@ From project root:
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt  # if present
+pip install -r requirements.txt
 ```
 
 Create a `.env` at the **project root** (next to `manage.py`). Django loads it automatically via `python-dotenv`; you do not need `source .env` for the backend.
 
 ```bash
-cp .env.example .env  # if available
+cp .env.example .env
 # edit .env with your secrets
 ```
 
@@ -137,6 +152,8 @@ CREATE DATABASE simple_slack OWNER your_pg_user;
 
 ### 3) Configure `.env`
 
+Use PostgreSQL (default when `USE_SQLITE` is unset or `false`). If you tried SQLite earlier, remove `USE_SQLITE=true` or set `USE_SQLITE=false`.
+
 ```env
 DB_NAME=simple_slack
 DB_USER=your_pg_user
@@ -155,7 +172,13 @@ python manage.py migrate
 
 ## Quick fallback for demo (SQLite)
 
-If local PostgreSQL is not ready yet:
+If local PostgreSQL is not ready yet, set SQLite mode (via `.env` or the shell) so Django uses `db.sqlite3` at the repo root:
+
+```env
+USE_SQLITE=true
+```
+
+Then:
 
 ```bash
 python manage.py migrate
