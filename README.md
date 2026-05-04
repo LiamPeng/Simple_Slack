@@ -33,20 +33,14 @@ source .venv/bin/activate
 pip install -r requirements.txt  # if present
 ```
 
-If `requirements.txt` is not present, install the core backend packages manually:
-
-```bash
-pip install django djangorestframework djangorestframework-simplejwt django-cors-headers psycopg2-binary
-```
-
-Create and load environment variables:
+Create a `.env` at the **project root** (next to `manage.py`). Django loads it automatically via `python-dotenv`; you do not need `source .env` for the backend.
 
 ```bash
 cp .env.example .env  # if available
-set -a
-source .env
-set +a
+# edit .env with your secrets
 ```
+
+For `VITE_*` variables, Vite reads `.env` from `frontend/` when you run `npm run dev` there—copy or symlink the relevant lines if your `.env` lives only at the repo root.
 
 Required backend env values (minimum):
 
