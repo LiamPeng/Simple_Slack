@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { channelsAPI, ChannelDetail, ChannelMember, Message } from '../api/channels';
 import { workspacesAPI } from '../api/workspaces';
-import { getApiErrorMessage } from '../api/client';
+import { getApiErrorMessage, getWebSocketRootUrl } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Send, Hash, Lock, Users, UserPlus } from 'lucide-react';
 
@@ -22,6 +22,36 @@ export function ChannelDetailPage() {
   useEffect(() => {
     loadChannelData();
   }, [channelId, user?.id]);
+
+  useEffect(() => {
+    if (loading || !channelId) return;
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    const wsUrl = `${getWebSocketRootUrl()}/ws/channel/${channelId}/?token=${encodeURIComponent(token)}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data) as Message;
+        if (msg?.id == null) return;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      } catch {
+        /* ignore malformed payloads */
+      }
+    };
+
+    ws.onerror = () => {
+      console.warn('Channel WebSocket error');
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [channelId, loading]);
 
   useEffect(() => {
     scrollToBottom();
@@ -53,7 +83,10 @@ export function ChannelDetailPage() {
       const newMessage = await channelsAPI.createMessage(Number(channelId), {
         body: messageContent,
       });
-      setMessages([...messages, newMessage]);
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMessage.id)) return prev;
+        return [...prev, newMessage];
+      });
       setMessageContent('');
     } catch (error) {
       console.error('Error sending message:', error);

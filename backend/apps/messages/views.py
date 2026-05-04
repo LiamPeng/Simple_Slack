@@ -8,6 +8,7 @@ from backend.apps.channels.models import Channel
 from backend.apps.core.access import can_access_channel
 
 from .models import Message
+from .realtime import broadcast_channel_message
 from .serializers import CreateMessageSerializer, MessageSerializer
 
 
@@ -34,7 +35,9 @@ class ChannelMessagesView(APIView):
             sender=request.user,
             body=serializer.validated_data["body"],
         )
-        return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
+        payload = MessageSerializer(message).data
+        broadcast_channel_message(channel.id, payload)
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 
 class SearchMessagesView(APIView):
