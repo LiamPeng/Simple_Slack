@@ -33,6 +33,7 @@ class AppUserManager(BaseUserManager):
         return self.create_user(username=username, email=email, password=password, **extra_fields)
 
 
+# ORM (Object-Relational Mapping) Prevents SQL injection, no need to write raw SQL queries
 class AppUser(AbstractBaseUser, PermissionsMixin):
     user_id = models.BigAutoField(primary_key=True, db_column="user_id")
     email = models.EmailField(max_length=100, unique=True)

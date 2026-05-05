@@ -184,3 +184,11 @@ Then:
 python manage.py migrate
 python manage.py runserver
 ```
+
+## Security and concurrency notes
+
+For security, we protect against SQL injection by using Django ORM for all runtime queries instead of building raw SQL strings from user input. In our codebase, raw SQL execution appears only in a migration file, not in request-handling paths.
+
+For XSS, user-generated message content is rendered through normal React JSX bindings, which escape HTML by default, so scripts are not executed in the browser. We do not render chat content with `dangerouslySetInnerHTML`.
+
+For multi-user consistency, we defined database transactions using `@transaction.atomic` in workspace, channel, and invitation service flows, and we use row-level locking (`select_for_update`) for sensitive membership and role updates to avoid race conditions.
